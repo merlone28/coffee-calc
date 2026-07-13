@@ -20,6 +20,24 @@
     --border: #e8dfd3;
     --blue: #3d6e8f;
   }
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #1d1913;
+    --card: #292219;
+    --brown: #a97c50;
+    --brown-dark: #d9b98f;
+    --accent: #c8a06b;
+    --text: #ece3d6;
+    --muted: #a4917a;
+    --border: #3e352a;
+    --blue: #85b8d8;
+  }
+  html[data-theme="dark"] .spec { background: #362d21; }
+  html[data-theme="dark"] .field input[type=number] { background: #221c14; }
+  html[data-theme="dark"] .step-water { background: #453722; color: #e8cfa6; }
+  html[data-theme="dark"] .water-item { background: #253038; }
+  html[data-theme="dark"] .preset:hover { background: #362d21; }
+  html[data-theme="dark"] .tab.active, html[data-theme="dark"] .toggle.active { background: #7a5636; color: #fff; border-color: #7a5636; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -106,10 +124,16 @@
   .water-item b { display: block; color: var(--blue); margin-bottom: 2px; }
   .water-note { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
   .footer { text-align: center; font-size: 0.72rem; color: var(--muted); margin-top: 8px; }
+  .theme-btn {
+    border: 1px solid var(--border); background: var(--card); border-radius: 50%;
+    width: 38px; height: 38px; cursor: pointer; font-size: 1.05rem; flex-shrink: 0;
+  }
+  .theme-btn:hover { border-color: var(--accent); }
+  .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 </style>
 </head>
 <body>
-<h1>☕ Calcolatore Infusioni Caffè</h1>
+<div class="topbar"><h1>☕ Calcolatore Infusioni Caffè</h1><button class="theme-btn" id="themeBtn" title="Tema chiaro / scuro">🌙</button></div>
 <div class="subtitle">Dosi, acqua e rapporti corretti per ogni metodo. Le impostazioni vengono salvate automaticamente.</div>
 
 <div class="tabs" id="tabs"></div>
@@ -418,6 +442,18 @@ function renderOutputs(fromSlider) {
   $('resultBanner').innerHTML = banner;
   $('mSteps').innerHTML = m.steps(v.dose, water, state.cbMode).map(s => `<li>${s}</li>`).join('');
 }
+
+// Tema chiaro/scuro
+function applyTheme() {
+  const t = state.theme || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.dataset.theme = t;
+  $('themeBtn').textContent = t === 'dark' ? '☀️' : '🌙';
+}
+$('themeBtn').addEventListener('click', () => {
+  state.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  save(); applyTheme();
+});
+applyTheme();
 
 render();
 </script>
