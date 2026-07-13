@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#6f4e37">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>Calcolatore Infusioni Caffè</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #faf6f0;
+    --card: #ffffff;
+    --brown: #6f4e37;
+    --brown-dark: #4a3324;
+    --accent: #c8a06b;
+    --text: #2e2620;
+    --muted: #8a7a6b;
+    --border: #e8dfd3;
+    --blue: #3d6e8f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 20px;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.35rem; color: var(--brown-dark); margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 18px; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .tab {
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+    padding: 8px 14px; border-radius: 20px; cursor: pointer; font-size: 0.9rem;
+    transition: all .15s;
+  }
+  .tab:hover { border-color: var(--accent); }
+  .tab.active { background: var(--brown); color: #fff; border-color: var(--brown); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px 20px; margin-bottom: 14px;
+  }
+  .method-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+  .method-name { font-size: 1.15rem; font-weight: 700; color: var(--brown-dark); }
+  .method-desc { color: var(--muted); font-size: 0.85rem; margin-bottom: 14px; }
+
+  .specs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .spec {
+    background: #f5eee4; border-radius: 8px; padding: 6px 10px; font-size: 0.8rem;
+  }
+  .spec b { color: var(--brown-dark); }
+
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .preset {
+    border: 1px dashed var(--accent); background: transparent; color: var(--brown);
+    padding: 5px 10px; border-radius: 14px; cursor: pointer; font-size: 0.8rem;
+  }
+  .preset:hover { background: #f5eee4; }
+
+  .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 6px; }
+  @media (max-width: 480px) { .calc-grid { grid-template-columns: 1fr; } }
+  .field label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  .field input[type=number] {
+    width: 100%; padding: 10px 12px; font-size: 1.3rem; font-weight: 700;
+    border: 2px solid var(--border); border-radius: 10px; color: var(--brown-dark);
+    background: #fffdf9;
+  }
+  .field input[type=number]:focus { outline: none; border-color: var(--accent); }
+
+  .ratio-row { margin: 14px 0 4px; }
+  .ratio-label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
+  .ratio-value { font-weight: 700; color: var(--brown-dark); font-size: 1rem; }
+  input[type=range] { width: 100%; accent-color: var(--brown); }
+  .ratio-hint { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+  .toggle-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .toggle {
+    flex: 1; padding: 8px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card); cursor: pointer; font-size: 0.85rem; text-align: center;
+  }
+  .toggle.active { background: var(--brown); color: #fff; border-color: var(--brown); }
+
+  .result-banner {
+    background: linear-gradient(135deg, #6f4e37, #8a6242); color: #fff;
+    border-radius: 12px; padding: 14px 18px; margin: 14px 0;
+    display: flex; justify-content: space-around; text-align: center; flex-wrap: wrap; gap: 10px;
+  }
+  .result-banner .rb-item .rb-val { font-size: 1.5rem; font-weight: 800; }
+  .result-banner .rb-item .rb-lab { font-size: 0.72rem; opacity: 0.85; text-transform: uppercase; letter-spacing: .05em; }
+
+  h3.section { font-size: 0.85rem; text-transform: uppercase; letter-spacing: .05em; color: var(--brown-dark); margin: 16px 0 8px; }
+  ol.steps { padding-left: 20px; }
+  ol.steps li { margin-bottom: 8px; font-size: 0.9rem; line-height: 1.45; }
+  ol.steps li b { color: var(--brown-dark); }
+  .step-water { background: #f0e6d6; border-radius: 6px; padding: 1px 7px; font-weight: 700; color: var(--brown-dark); white-space: nowrap; }
+  .step-time { color: var(--blue); font-weight: 700; }
+
+  .water-card h3 { color: var(--blue); font-size: 0.95rem; margin-bottom: 10px; }
+  .water-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .water-item { background: #eef4f8; border-radius: 10px; padding: 10px 12px; font-size: 0.82rem; }
+  .water-item b { display: block; color: var(--blue); margin-bottom: 2px; }
+  .water-note { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+  .footer { text-align: center; font-size: 0.72rem; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<h1>☕ Calcolatore Infusioni Caffè</h1>
+<div class="subtitle">Dosi, acqua e rapporti corretti per ogni metodo. Le impostazioni vengono salvate automaticamente.</div>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="card" id="methodCard">
+  <div class="method-header">
+    <span class="method-name" id="mName"></span>
+    <span style="font-size:0.8rem;color:var(--muted)" id="mType"></span>
+  </div>
+  <div class="method-desc" id="mDesc"></div>
+  <div class="specs" id="mSpecs"></div>
+  <div class="toggle-row" id="cbToggle" style="display:none">
+    <button class="toggle" data-cb="conc">Concentrato (da diluire)</button>
+    <button class="toggle" data-cb="rtd">Pronto da bere</button>
+  </div>
+  <div class="presets" id="mPresets"></div>
+
+  <div class="calc-grid">
+    <div class="field">
+      <label id="doseLabel">Caffè (g)</label>
+      <input type="number" id="doseInput" min="1" step="0.5">
+    </div>
+    <div class="field">
+      <label id="waterLabel">Acqua (g / ml)</label>
+      <input type="number" id="waterInput" min="10" step="5">
+    </div>
+  </div>
+
+  <div class="ratio-row">
+    <div class="ratio-label">
+      <span>Rapporto caffè : acqua</span>
+      <span class="ratio-value" id="ratioVal"></span>
+    </div>
+    <input type="range" id="ratioSlider" step="0.5">
+    <div class="ratio-hint" id="ratioHint"></div>
+  </div>
+
+  <div class="result-banner" id="resultBanner"></div>
+
+  <h3 class="section">Procedura con quantità calcolate</h3>
+  <ol class="steps" id="mSteps"></ol>
+</div>
+
+<div class="card water-card">
+  <h3>💧 Qualità dell'acqua (standard SCA)</h3>
+  <div class="water-grid">
+    <div class="water-item"><b>TDS / Residuo fisso</b>75–150 mg/L (ideale ~150). Sopra 250 mg/L appiattisce l'estrazione.</div>
+    <div class="water-item"><b>Durezza (GH)</b>50–175 ppm CaCO₃ — il calcio/magnesio estrae dolcezza e corpo.</div>
+    <div class="water-item"><b>Alcalinità (KH)</b>~40 ppm CaCO₃ — troppo alta smorza l'acidità, troppo bassa dà aspro.</div>
+    <div class="water-item"><b>pH</b>6,5–7,5. Mai acqua clorata: usa filtrata o oligominerale.</div>
+  </div>
+  <div class="water-note">
+    In pratica: acqua in bottiglia con residuo fisso 50–150 mg/L, oppure acqua di rubinetto filtrata (es. caraffa con filtro). Evita acqua distillata pura (estrazione piatta) e acqua molto dura (over-estrazione amara e calcare). Per il cold brew la qualità dell'acqua conta ancora di più: l'infusione lunga amplifica i difetti.
+  </div>
+</div>
+
+<div class="footer">1 g di acqua ≈ 1 ml · Modifica caffè, acqua o rapporto: gli altri valori si ricalcolano.</div>
+
+<script>
+const fmt = n => (Math.round(n * 2) / 2).toLocaleString('it-IT');
+const W = (n) => `<span class="step-water">${fmt(n)} g</span>`;
+const T = (t) => `<span class="step-time">${t}</span>`;
+
+const METHODS = {
+  v60: {
+    name: 'Hario V60', type: 'Percolazione', dose: 20, ratio: 15, min: 14, max: 17,
+    desc: 'Pour-over conico: tazza pulita e brillante. Il rapporto classico è 1:15 (≈ 60 g/L).',
+    specs: { 'Macinatura': 'media-fine (zucchero)', 'Temperatura': '92–96 °C', 'Tempo': '2:30–3:30' },
+    hint: '1:14 più intenso · 1:17 più leggero e delicato',
+    presets: [{ label: '1 tazza (250 g)', water: 250 }, { label: '2 tazze (400 g)', water: 400 }, { label: 'Caraffa (600 g)', water: 600 }],
+    steps: (d, w) => [
+      `Sciacqua il filtro con acqua calda, scaldando la V60. Aggiungi ${W(d)} di caffè e livella il letto.`,
+      `${T('0:00')} — <b>Bloom:</b> versa ${W(d * 3)} d'acqua (3× la dose), ruota il dripper. Attendi ${T('0:45')}.`,
+      `${T('0:45')} — Versa a spirale fino a ${W(w * 0.6)} totali entro ${T('1:15')}.`,
+      `${T('1:30')} — Completa fino a ${W(w)} totali entro ${T('2:00')}, con versate lente al centro.`,
+      `Percolazione completa entro ${T('2:45–3:15')}. Se è più lenta, macina più grosso.`
+    ]
+  },
+  aeropress: {
+    name: 'AeroPress', type: 'Immersione + pressione', dose: 15, ratio: 13, min: 10, max: 17,
+    desc: 'Versatile e corposo. Rapporti concentrati (1:10–1:12) per stile "espresso", 1:15–1:17 per tazza filtro.',
+    specs: { 'Macinatura': 'media-fine', 'Temperatura': '85–92 °C', 'Tempo': '~2:00' },
+    hint: '1:10–1:12 concentrato · 1:13 equilibrato · 1:15+ stile filtro',
+    presets: [{ label: 'Concentrato (150 g)', water: 150 }, { label: 'Standard (200 g)', water: 200 }, { label: 'Massimo (250 g)', water: 250 }],
+    steps: (d, w) => [
+      `Metodo classico: filtro sciacquato nel cappuccio, AeroPress sul server. Aggiungi ${W(d)} di caffè.`,
+      `${T('0:00')} — Versa ${W(w)} d'acqua in un colpo solo e mescola 10 secondi.`,
+      `Avvita il cappuccio (o inserisci lo stantuffo di 1 cm per fermare il flusso).`,
+      `${T('1:30')} — Premi con pressione costante per ~30 secondi. Fermati al sibilo.`,
+      `Totale ~${T('2:00')}. Con rapporto sotto 1:12, allunga con acqua calda a piacere.`
+    ]
+  },
+  kalita: {
+    name: 'Kalita 101', type: 'Percolazione', dose: 16, ratio: 16, min: 15, max: 17,
+    desc: 'Dripper a fondo piatto per 1–2 tazze: estrazione uniforme e tollerante. Rapporto tipico 1:16.',
+    specs: { 'Macinatura': 'media', 'Temperatura': '90–94 °C', 'Tempo': '3:00–3:45' },
+    hint: '1:15 più corpo · 1:17 più tè-like',
+    presets: [{ label: '1 tazza (180 g)', water: 180 }, { label: '2 tazze (300 g)', water: 300 }],
+    steps: (d, w) => [
+      `Sciacqua il filtro a ventaglio, aggiungi ${W(d)} di caffè.`,
+      `${T('0:00')} — <b>Bloom:</b> ${W(d * 2.5)} d'acqua, attendi ${T('0:45')}.`,
+      `${T('0:45')} — Versa fino a ${W(w * 0.5)} totali con movimento circolare lento.`,
+      `${T('1:30')} — Versa fino a ${W(w * 0.75)} totali.`,
+      `${T('2:15')} — Completa fino a ${W(w)} totali. Fine entro ${T('3:00–3:45')}.`
+    ]
+  },
+  switch: {
+    name: 'Hario Switch', type: 'Immersione ibrida', dose: 20, ratio: 15, min: 14, max: 17,
+    desc: 'V60 con valvola: immersione controllata + percolazione finale. Estrazione dolce e ripetibile.',
+    specs: { 'Macinatura': 'media', 'Temperatura': '90–93 °C', 'Tempo': '3:00–3:30' },
+    hint: '1:15 standard · con caffè chiari prova 1:16',
+    presets: [{ label: '1 tazza (240 g)', water: 240 }, { label: 'Piena (360 g)', water: 360 }],
+    steps: (d, w) => [
+      `Valvola <b>chiusa</b>, filtro sciacquato (aprila per scaricare l'acqua di risciacquo, poi richiudi). Aggiungi ${W(d)} di caffè.`,
+      `${T('0:00')} — Versa tutti i ${W(w)} d'acqua e mescola delicatamente.`,
+      `Lascia in immersione a valvola chiusa.`,
+      `${T('2:00')} — <b>Apri la valvola</b> e lascia drenare.`,
+      `Drenaggio completo entro ${T('3:00–3:30')}. Variante: apri a 1:30 per più acidità, a 2:30 per più corpo.`
+    ]
+  },
+  moka: {
+    name: 'Moka', type: 'Pressione a vapore', dose: 16.5, ratio: 10, min: 7, max: 12, waterDriven: true,
+    desc: "L'acqua è determinata dalla caldaia (fino alla valvola): scegli la taglia e ottieni la dose corretta. Rapporto tipico 1:10.",
+    specs: { 'Macinatura': 'medio-fine (più grossa dell\'espresso)', 'Acqua': 'calda, fino alla valvola', 'Fuoco': 'medio-basso' },
+    hint: '1:7–1:8 più intenso · 1:10 classico · 1:12 più leggero',
+    presets: [{ label: '1 tazza (60 g)', water: 60 }, { label: '2 tazze (110 g)', water: 110 }, { label: '3 tazze (165 g)', water: 165 }, { label: '6 tazze (300 g)', water: 300 }],
+    steps: (d, w) => [
+      `Riempi la caldaia con ${W(w)} di acqua <b>già calda</b> fino alla valvola (mai oltre): riduce il tempo sul fuoco e l'amaro metallico.`,
+      `Riempi il filtro con ${W(d)} di caffè: raso, senza pressare, livellato con un colpetto.`,
+      `Avvita (con un panno, la base scotta) e metti su fuoco medio-basso, coperchio aperto.`,
+      `Quando il caffè sale con flusso cremoso e costante, abbassa il fuoco.`,
+      `Al primo gorgoglio <b>togli dal fuoco</b> e raffredda la base sotto acqua fredda per fermare l'estrazione. Mescola nel raccoglitore prima di servire.`
+    ]
+  },
+  coldbrew: {
+    name: 'Cold Brew', type: 'Immersione a freddo', dose: 60, ratio: 8, min: 5, max: 10, coldbrew: true,
+    desc: 'Estrazione lunga a freddo: dolce, senza acidità. Concentrato 1:5–1:10 (da diluire) o pronto da bere 1:12–1:16.',
+    specs: { 'Macinatura': 'grossa (pangrattato)', 'Temperatura': 'ambiente o frigo', 'Tempo': '12–24 h' },
+    hint: 'Concentrato: 1:8 classico. Diluizione finale 1:1 con acqua o latte.',
+    presets: [{ label: '500 g acqua', water: 500 }, { label: '1 L acqua', water: 1000 }, { label: '2 L acqua', water: 2000 }],
+    steps: (d, w, mode) => {
+      const s = [
+        `Macina grosso ${W(d)} di caffè e mettilo nel contenitore (french press, barattolo o toddy).`,
+        `Versa ${W(w)} di acqua fredda o a temperatura ambiente. Mescola bene per bagnare tutto il caffè.`,
+        `Copri e lascia in infusione: <b>in frigo ${mode === 'conc' ? '18–24 h' : '12–16 h'}</b>, a temperatura ambiente riduci di ~4 h.`,
+        `Filtra con filtro di carta o panno fine (doppio passaggio per una tazza più pulita).`
+      ];
+      if (mode === 'conc') {
+        s.push(`<b>Diluizione:</b> è un concentrato — servi 1:1, es. ${W(150)} di concentrato + ${W(150)} di acqua/latte/ghiaccio.`);
+      } else {
+        s.push(`Pronto da bere: servi liscio con ghiaccio, senza diluire.`);
+      }
+      s.push(`Si conserva in frigo fino a 2 settimane (concentrato) o 1 settimana (pronto).`);
+      return s;
+    }
+  }
+};
+
+const ORDER = ['v60', 'aeropress', 'kalita', 'switch', 'moka', 'coldbrew'];
+const LS_KEY = 'coffee-brew-calc-v1';
+
+let state = { method: 'v60', cbMode: 'conc', vals: {} };
+try {
+  const saved = JSON.parse(localStorage.getItem(LS_KEY));
+  if (saved && METHODS[saved.method]) state = Object.assign(state, saved);
+} catch (e) {}
+
+function getVals(key) {
+  if (!state.vals[key]) {
+    const m = METHODS[key];
+    let ratio = m.ratio;
+    if (m.coldbrew && state.cbMode === 'rtd') ratio = 14;
+    state.vals[key] = { dose: m.dose, ratio: ratio };
+  }
+  return state.vals[key];
+}
+function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
+
+const $ = id => document.getElementById(id);
+
+function renderTabs() {
+  $('tabs').innerHTML = ORDER.map(k =>
+    `<button class="tab ${k === state.method ? 'active' : ''}" data-m="${k}">${METHODS[k].name}</button>`
+  ).join('');
+  $('tabs').querySelectorAll('.tab').forEach(b =>
+    b.addEventListener('click', () => { state.method = b.dataset.m; save(); render(); })
+  );
+}
+
+function render() {
+  renderTabs();
+  const key = state.method;
+  const m = METHODS[key];
+  const v = getVals(key);
+  const water = Math.round(v.dose * v.ratio);
+
+  $('mName').textContent = m.name;
+  $('mType').textContent = m.type;
+  $('mDesc').textContent = m.desc;
+  $('mSpecs').innerHTML = Object.entries(m.specs).map(([k2, val]) =>
+    `<span class="spec"><b>${k2}:</b> ${val}</span>`).join('');
+
+  // Cold brew toggle
+  const cbT = $('cbToggle');
+  if (m.coldbrew) {
+    cbT.style.display = 'flex';
+    cbT.querySelectorAll('.toggle').forEach(b => {
+      b.classList.toggle('active', b.dataset.cb === state.cbMode);
+      b.onclick = () => {
+        state.cbMode = b.dataset.cb;
+        const vv = getVals(key);
+        vv.ratio = state.cbMode === 'conc' ? 8 : 14;
+        save(); render();
+      };
+    });
+  } else cbT.style.display = 'none';
+
+  // Ratio slider bounds (cold brew RTD has its own range)
+  let min = m.min, max = m.max;
+  if (m.coldbrew && state.cbMode === 'rtd') { min = 12; max = 16; }
+  const sl = $('ratioSlider');
+  sl.min = min; sl.max = max;
+  if (v.ratio < min) v.ratio = min;
+  if (v.ratio > max) v.ratio = max;
+  sl.value = v.ratio;
+  $('ratioVal').textContent = '1 : ' + v.ratio;
+  $('ratioHint').textContent = m.hint;
+
+  $('doseInput').value = Math.round(v.dose * 2) / 2;
+  $('waterInput').value = water;
+  $('doseLabel').textContent = m.waterDriven ? 'Caffè nel filtro (g)' : 'Caffè (g)';
+  $('waterLabel').textContent = m.waterDriven ? 'Acqua in caldaia (g / ml)' : 'Acqua (g / ml)';
+
+  // Presets
+  $('mPresets').innerHTML = m.presets.map((p, i) =>
+    `<button class="preset" data-i="${i}">${p.label}</button>`).join('');
+  $('mPresets').querySelectorAll('.preset').forEach(b =>
+    b.addEventListener('click', () => {
+      const p = m.presets[+b.dataset.i];
+      const vv = getVals(key);
+      vv.dose = p.water / vv.ratio;
+      save(); render();
+    })
+  );
+
+  // Result banner
+  let banner = `
+    <div class="rb-item"><div class="rb-val">${fmt(v.dose)} g</div><div class="rb-lab">Caffè</div></div>
+    <div class="rb-item"><div class="rb-val">${water} g</div><div class="rb-lab">Acqua</div></div>
+    <div class="rb-item"><div class="rb-val">1:${v.ratio}</div><div class="rb-lab">Rapporto</div></div>`;
+  if (m.coldbrew && state.cbMode === 'conc') {
+    banner += `<div class="rb-item"><div class="rb-val">~${Math.round(water * 2 * 0.85)} g</div><div class="rb-lab">Bevanda finale (dopo diluizione 1:1)</div></div>`;
+  } else if (!m.waterDriven && !m.coldbrew) {
+    const cups = Math.max(1, Math.round(water / 200));
+    banner += `<div class="rb-item"><div class="rb-val">~${cups}</div><div class="rb-lab">Tazze da 200 ml</div></div>`;
+  }
+  $('resultBanner').innerHTML = banner;
+
+  // Steps
+  const steps = m.steps(v.dose, water, state.cbMode);
+  $('mSteps').innerHTML = steps.map(s => `<li>${s}</li>`).join('');
+}
+
+// Input handlers — bidirectional
+$('doseInput').addEventListener('input', () => {
+  const d = parseFloat($('doseInput').value);
+  if (!d || d <= 0) return;
+  const v = getVals(state.method);
+  v.dose = d;
+  save(); renderOutputs();
+});
+$('waterInput').addEventListener('input', () => {
+  const w = parseFloat($('waterInput').value);
+  if (!w || w <= 0) return;
+  const v = getVals(state.method);
+  v.dose = w / v.ratio;
+  save(); renderOutputs();
+});
+$('ratioSlider').addEventListener('input', () => {
+  const v = getVals(state.method);
+  v.ratio = parseFloat($('ratioSlider').value);
+  // keep dose fixed, recompute water
+  save(); renderOutputs(true);
+});
+
+// Lighter re-render that doesn't rebuild inputs being typed into
+function renderOutputs(fromSlider) {
+  const key = state.method;
+  const m = METHODS[key];
+  const v = getVals(key);
+  const water = Math.round(v.dose * v.ratio);
+  $('ratioVal').textContent = '1 : ' + v.ratio;
+  if (document.activeElement !== $('doseInput')) $('doseInput').value = Math.round(v.dose * 2) / 2;
+  if (document.activeElement !== $('waterInput') || fromSlider) $('waterInput').value = water;
+
+  let banner = `
+    <div class="rb-item"><div class="rb-val">${fmt(v.dose)} g</div><div class="rb-lab">Caffè</div></div>
+    <div class="rb-item"><div class="rb-val">${water} g</div><div class="rb-lab">Acqua</div></div>
+    <div class="rb-item"><div class="rb-val">1:${v.ratio}</div><div class="rb-lab">Rapporto</div></div>`;
+  if (m.coldbrew && state.cbMode === 'conc') {
+    banner += `<div class="rb-item"><div class="rb-val">~${Math.round(water * 2 * 0.85)} g</div><div class="rb-lab">Bevanda finale (dopo diluizione 1:1)</div></div>`;
+  } else if (!m.waterDriven && !m.coldbrew) {
+    const cups = Math.max(1, Math.round(water / 200));
+    banner += `<div class="rb-item"><div class="rb-val">~${cups}</div><div class="rb-lab">Tazze da 200 ml</div></div>`;
+  }
+  $('resultBanner').innerHTML = banner;
+  $('mSteps').innerHTML = m.steps(v.dose, water, state.cbMode).map(s => `<li>${s}</li>`).join('');
+}
+
+render();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+}
+</script>
+</body>
+</html>
