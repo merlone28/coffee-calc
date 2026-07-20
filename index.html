@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calcolatore Infusioni Caffè</title>
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#b5511f">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<title>Calcolatore Infusioni Caffè</title>
 <style>
   :root {
     color-scheme: light;
@@ -387,39 +387,82 @@
     resize: vertical; margin-bottom: 18px; transition: border-color .2s ease;
   }
   .diary-note:focus { outline: none; border-color: var(--accent); }
+
+  /* ---------- Repeat last brew banner ---------- */
+  .repeat-banner {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: var(--accent-tint); border: 1px solid var(--accent); border-radius: var(--r-md);
+    padding: 12px 16px; margin-bottom: 18px;
+  }
+  .repeat-banner-text { font-size: 0.84rem; color: var(--ink); font-weight: 600; }
+  .repeat-banner-text b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--accent); }
+  .repeat-banner-btn {
+    border: none; background: var(--accent); color: var(--accent-ink); border-radius: 999px;
+    padding: 8px 16px; font-size: 0.8rem; font-weight: 700; cursor: pointer; font-family: var(--font-sans);
+    white-space: nowrap; flex-shrink: 0; transition: opacity .2s ease;
+  }
+  .repeat-banner-btn:hover { opacity: .9; }
+
+  /* ---------- Diary actions: compare / export / import ---------- */
+  .diary-actions { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .diary-action-btn {
+    border: 1px solid var(--line); background: transparent; color: var(--ink-soft);
+    padding: 6px 13px; border-radius: 999px; font-size: 0.76rem; font-weight: 600; cursor: pointer;
+    font-family: var(--font-sans); transition: border-color .2s ease, color .2s ease, background .2s ease;
+  }
+  .diary-action-btn:hover { border-color: var(--accent); color: var(--ink); }
+  .diary-action-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .diary-action-btn:disabled { opacity: .4; cursor: default; }
+  .diary-compare-check { margin-right: 8px; accent-color: var(--accent); }
+
+  /* ---------- Compare overlay ---------- */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; max-width: 480px; text-align: left; }
+  .compare-col { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 14px; }
+  .compare-col-method { font-weight: 700; color: var(--ink); font-size: 0.88rem; margin-bottom: 8px; }
+  .compare-col-date { font-size: 0.7rem; color: var(--ink-faint); margin-bottom: 10px; }
+  .compare-row { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--ink-soft); padding: 5px 0; border-top: 1px solid var(--line); }
+  .compare-row b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+  .compare-stars { color: var(--accent); letter-spacing: 2px; }
+  .compare-note { font-size: 0.78rem; color: var(--ink); font-style: italic; margin-top: 8px; line-height: 1.4; }
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <div class="brand">
-    <h1>Calcolatore Infusioni</h1>
-    <div class="subtitle">Dosi, acqua e rapporti corretti per ogni metodo. Le impostazioni vengono salvate automaticamente.</div>
+    <h1 id="appTitle">Calcolatore Infusioni</h1>
+    <div class="subtitle" id="appSubtitle">Dosi, acqua e rapporti corretti per ogni metodo. Le impostazioni vengono salvate automaticamente.</div>
   </div>
   <div class="topbar-actions">
+    <button class="icon-btn" id="langBtn" title="Language / Lingua" style="font-size:0.72rem;font-weight:700;">IT</button>
     <button class="icon-btn" id="notifyBtn" title="Notifiche">🔕</button>
     <button class="icon-btn" id="themeBtn" title="Tema chiaro / scuro">🌙</button>
   </div>
 </div>
 
 <div class="roast-row">
-  <span class="roast-label">Tostatura</span>
+  <span class="roast-label" id="roastRowLabel">Tostatura</span>
   <div class="roast-group">
     <button class="roast-btn" data-r="light">Chiara</button>
     <button class="roast-btn" data-r="medium">Media</button>
     <button class="roast-btn" data-r="dark">Scura</button>
   </div>
   <div class="roast-date-field">
-    <span class="roast-label">Tostato il</span>
+    <span class="roast-label" id="roastedOnLabel">Tostato il</span>
     <input type="date" id="roastDateInput" class="roast-date-input">
   </div>
 </div>
 <div class="freshness-tip hidden" id="freshnessTip"></div>
 
+<div class="repeat-banner hidden" id="repeatBanner">
+  <div class="repeat-banner-text" id="repeatBannerText"></div>
+  <button class="repeat-banner-btn" id="repeatLastBtn"></button>
+</div>
+
 <div class="tabs" id="tabs"></div>
 
 <div class="card" id="methodCard">
-  <div class="card-eyebrow">Metodo</div>
+  <div class="card-eyebrow" id="methodEyebrow">Metodo</div>
   <div class="method-header">
     <span class="method-name" id="mName"></span>
     <span class="method-type" id="mType"></span>
@@ -428,9 +471,9 @@
   <div class="specs" id="mSpecs"></div>
   <div class="roast-tip hidden" id="roastTip"></div>
   <div class="grind-scale">
-    <div class="grind-scale-label">Macinatura consigliata</div>
+    <div class="grind-scale-label" id="grindLabel">Macinatura consigliata</div>
     <div class="grind-track"><div class="grind-dots" id="grindDots"></div></div>
-    <div class="grind-scale-ends"><span>Fine</span><span>Grossa</span></div>
+    <div class="grind-scale-ends"><span id="grindFineLabel">Fine</span><span id="grindCoarseLabel">Grossa</span></div>
   </div>
   <div class="toggle-row" id="cbToggle" style="display:none">
     <button class="toggle" data-cb="conc">Concentrato (da diluire)</button>
@@ -439,7 +482,7 @@
 </div>
 
 <div class="card">
-  <div class="card-eyebrow">Dose e acqua</div>
+  <div class="card-eyebrow" id="doseWaterEyebrow">Dose e acqua</div>
   <div class="presets" id="mPresets"></div>
 
   <div class="calc-grid">
@@ -455,7 +498,7 @@
 
   <div class="ratio-row">
     <div class="ratio-label">
-      <span>Rapporto caffè : acqua</span>
+      <span id="ratioLabelText">Rapporto caffè : acqua</span>
       <span class="ratio-value" id="ratioVal"></span>
     </div>
     <input type="range" id="ratioSlider" step="0.5">
@@ -468,14 +511,14 @@
       <div class="rv-water" id="rvWater"></div>
     </div>
     <div class="ratio-visual-labels">
-      <span class="rv-item"><span class="rv-dot rv-dot-coffee"></span>Caffè <b id="rvCoffeeLabel"></b></span>
-      <span class="rv-item"><span class="rv-dot rv-dot-water"></span>Acqua <b id="rvWaterLabel"></b></span>
+      <span class="rv-item"><span class="rv-dot rv-dot-coffee"></span><span id="rvCoffeeWord">Caffè</span> <b id="rvCoffeeLabel"></b></span>
+      <span class="rv-item"><span class="rv-dot rv-dot-water"></span><span id="rvWaterWord">Acqua</span> <b id="rvWaterLabel"></b></span>
     </div>
   </div>
 </div>
 
 <div class="card">
-  <div class="card-eyebrow">Risultato</div>
+  <div class="card-eyebrow" id="resultEyebrow">Risultato</div>
   <div class="result-banner" id="resultBanner"></div>
   <div class="action-row">
     <button class="timer-btn" id="openTimerBtn">Avvia timer guidato</button>
@@ -487,40 +530,46 @@
 </div>
 
 <div class="card">
-  <h3 class="section">Procedura con quantità calcolate</h3>
+  <h3 class="section" id="procedureEyebrow">Procedura con quantità calcolate</h3>
   <ol class="steps" id="mSteps"></ol>
 </div>
 
 <div class="card water-card">
-  <h3>Qualità dell'acqua</h3>
+  <h3 id="waterQualityTitle">Qualità dell'acqua</h3>
   <div class="water-grid">
-    <div class="water-item"><b>TDS / Residuo fisso</b>75–150 mg/L (ideale ~150). Sopra 250 mg/L appiattisce l'estrazione.</div>
-    <div class="water-item"><b>Durezza (GH)</b>50–175 ppm CaCO₃ — il calcio/magnesio estrae dolcezza e corpo.</div>
-    <div class="water-item"><b>Alcalinità (KH)</b>~40 ppm CaCO₃ — troppo alta smorza l'acidità, troppo bassa dà aspro.</div>
-    <div class="water-item"><b>pH</b>6,5–7,5. Mai acqua clorata: usa filtrata o oligominerale.</div>
+    <div class="water-item"><b id="waterTdsTitle">TDS / Residuo fisso</b><span id="waterTdsText">75–150 mg/L (ideale ~150). Sopra 250 mg/L appiattisce l'estrazione.</span></div>
+    <div class="water-item"><b id="waterHardTitle">Durezza (GH)</b><span id="waterHardText">50–175 ppm CaCO₃ — il calcio/magnesio estrae dolcezza e corpo.</span></div>
+    <div class="water-item"><b id="waterAlkTitle">Alcalinità (KH)</b><span id="waterAlkText">~40 ppm CaCO₃ — troppo alta smorza l'acidità, troppo bassa dà aspro.</span></div>
+    <div class="water-item"><b id="waterPhTitle">pH</b><span id="waterPhText">6,5–7,5. Mai acqua clorata: usa filtrata o oligominerale.</span></div>
   </div>
-  <div class="water-note">
+  <div class="water-note" id="waterNoteText">
     In pratica: acqua in bottiglia con residuo fisso 50–150 mg/L, oppure acqua di rubinetto filtrata (es. caraffa con filtro). Evita acqua distillata pura (estrazione piatta) e acqua molto dura (over-estrazione amara e calcare). Per il cold brew la qualità dell'acqua conta ancora di più: l'infusione lunga amplifica i difetti.
   </div>
 </div>
 
 <div class="card" id="diaryCard">
   <div class="diary-header">
-    <h3>Diario infusioni</h3>
+    <h3 id="diaryTitle">Diario infusioni</h3>
     <button class="diary-add-btn" id="diaryAddBtn">+ Aggiungi</button>
+  </div>
+  <div class="diary-actions" id="diaryActions">
+    <button class="diary-action-btn" id="diaryCompareBtn">Confronta</button>
+    <button class="diary-action-btn" id="diaryExportBtn">Esporta</button>
+    <button class="diary-action-btn" id="diaryImportBtn">Importa</button>
+    <input type="file" id="diaryImportFile" accept="application/json" class="hidden">
   </div>
   <div class="diary-stats hidden" id="diaryStats"></div>
   <div class="diary-empty" id="diaryEmpty">Nessuna infusione salvata ancora. Registra la tua prossima tazza per iniziare a tracciare cosa funziona meglio.</div>
   <div class="diary-list" id="diaryList"></div>
 </div>
 
-<div class="footer">1 g di acqua ≈ 1 ml · Modifica caffè, acqua o rapporto: gli altri valori si ricalcolano.</div>
+<div class="footer" id="footerText">1 g di acqua ≈ 1 ml · Modifica caffè, acqua o rapporto: gli altri valori si ricalcolano.</div>
 
 <div class="toast" id="toast"></div>
 
 <div class="timer-overlay diary-overlay" id="diaryOverlay">
   <button class="timer-close" id="diaryClose">✕</button>
-  <div class="timer-method">Registra infusione</div>
+  <div class="timer-method" id="diaryFormTitle">Registra infusione</div>
   <div class="diary-form-recipe" id="diaryFormRecipe"></div>
   <div class="diary-stars" id="diaryStars">
     <button type="button" data-v="1">★</button>
@@ -533,6 +582,12 @@
   <div class="timer-controls">
     <button class="timer-main-btn timer-start-btn" id="diarySaveBtn">Salva</button>
   </div>
+</div>
+
+<div class="timer-overlay diary-overlay" id="compareOverlay">
+  <button class="timer-close" id="compareClose">✕</button>
+  <div class="timer-method" id="compareTitle">Confronto ricette</div>
+  <div class="compare-grid" id="compareGrid"></div>
 </div>
 
 <div class="timer-overlay" id="timerOverlay">
@@ -590,13 +645,10 @@ const fmt = n => (Math.round(n * 2) / 2).toLocaleString('it-IT');
 const W = (n) => `<span class="step-water">${fmt(n)} g</span>`;
 const T = (t) => `<span class="step-time">${t}</span>`;
 
-const ROAST = {
-  light: { tempDelta: 2, note: 'Tostatura chiara: più acidità — meglio acqua più calda (verso il massimo del range) e un rapporto leggermente più diluito.' },
-  medium: { tempDelta: 0, note: '' },
-  dark: { tempDelta: -3, note: 'Tostatura scura: più amaro — meglio acqua meno calda (verso il minimo del range) e un rapporto leggermente più concentrato.' }
-};
+const ROAST = { light: { tempDelta: 2 }, medium: { tempDelta: 0 }, dark: { tempDelta: -3 } };
+function roastNote(r) { return r === 'light' ? t('roastLightNote') : r === 'dark' ? t('roastDarkNote') : ''; }
 function val2(key, val) {
-  if (key !== 'Temperatura') return val;
+  if (key !== 'Temperatura' && key !== 'Temperature') return val;
   const delta = ROAST[state.roast || 'medium'].tempDelta;
   if (!delta) return val;
   return val.replace(/(\d+)(?:–(\d+))?\s*°C/, (m, a, b) => {
@@ -750,7 +802,348 @@ const METHODS = {
 const ORDER = ['v60', 'aeropress', 'kalita', 'switch', 'moka', 'coldbrew'];
 const LS_KEY = 'coffee-brew-calc-v1';
 
-let state = { method: 'v60', cbMode: 'conc', roast: 'medium', vals: {} };
+// ===== English content for all methods (mirrors METHODS text fields) =====
+const METHODS_EN = {
+  v60: {
+    type: 'Pour-over',
+    desc: 'Conical pour-over: a clean, bright cup. The classic ratio is 1:15 (≈ 60 g/L).',
+    specs: { 'Grind': 'medium-fine (sugar-like)', 'Temperature': '92–96 °C', 'Time': '2:30–3:30' },
+    hint: '1:14 stronger · 1:17 lighter and more delicate',
+    presets: ['1 cup (250 g)', '2 cups (400 g)', 'Carafe (600 g)'],
+    steps: (d, w) => [
+      `Rinse the filter with hot water, warming the V60. Add ${W(d)} of coffee and level the bed.`,
+      `${T('0:00')} — <b>Bloom:</b> pour ${W(d * 3)} of water (3× the dose), swirl the dripper. Wait ${T('0:45')}.`,
+      `${T('0:45')} — Pour in a spiral up to ${W(w * 0.6)} total within ${T('1:15')}.`,
+      `${T('1:30')} — Finish up to ${W(w)} total within ${T('2:00')}, with slow pours in the center.`,
+      `Full drawdown within ${T('2:45–3:15')}. If it's slower, grind coarser.`
+    ],
+    timerText: () => ({ items: [
+      { title: 'Bloom', detail: `Pour ${fmt(0)} g placeholder` }
+    ] })
+  }
+};
+METHODS_EN.v60.timerText = (d, w) => ({ items: [
+  { title: 'Bloom', detail: `Pour ${fmt(d * 3)} g of water and swirl the dripper` },
+  { title: 'First pour', detail: `Pour in a spiral up to ${fmt(w * 0.6)} g total` },
+  { title: 'Second pour', detail: `Finish up to ${fmt(w)} g total, slow pours in the center` },
+  { title: 'Final minutes', detail: 'Let it drain until the end' }
+] });
+
+METHODS_EN.aeropress = {
+  type: 'Immersion + pressure',
+  desc: 'Versatile and full-bodied. Concentrated ratios (1:10–1:12) for an "espresso" style, 1:15–1:17 for filter-style.',
+  specs: { 'Grind': 'medium-fine', 'Temperature': '85–92 °C', 'Time': '~2:00' },
+  hint: '1:10–1:12 concentrated · 1:13 balanced · 1:15+ filter style',
+  presets: ['Concentrated (150 g)', 'Standard (200 g)', 'Maximum (250 g)'],
+  steps: (d, w) => [
+    `Classic method: rinsed filter in the cap, AeroPress on the server. Add ${W(d)} of coffee.`,
+    `${T('0:00')} — Pour ${W(w)} of water all at once and stir for 10 seconds.`,
+    `Screw on the cap (or insert the plunger 1 cm to stop the flow).`,
+    `${T('1:30')} — Press with steady pressure for ~30 seconds. Stop at the hiss.`,
+    `Total ~${T('2:00')}. With a ratio under 1:12, top up with hot water to taste.`
+  ],
+  timerText: (d, w) => ({ items: [
+    { title: 'Pour the water', detail: `${fmt(w)} g all at once, stir for 10 seconds` },
+    { title: 'Press', detail: 'Steady pressure for ~30 seconds, stop at the hiss' }
+  ] })
+};
+
+METHODS_EN.kalita = {
+  type: 'Pour-over',
+  desc: 'Flat-bottom dripper for 1–2 cups: even, forgiving extraction. Typical ratio 1:16.',
+  specs: { 'Grind': 'medium', 'Temperature': '90–94 °C', 'Time': '3:00–3:45' },
+  hint: '1:15 more body · 1:17 more tea-like',
+  presets: ['1 cup (180 g)', '2 cups (300 g)'],
+  steps: (d, w) => [
+    `Rinse the fan filter, add ${W(d)} of coffee.`,
+    `${T('0:00')} — <b>Bloom:</b> ${W(d * 2.5)} of water, wait ${T('0:45')}.`,
+    `${T('0:45')} — Pour up to ${W(w * 0.5)} total with a slow circular motion.`,
+    `${T('1:30')} — Pour up to ${W(w * 0.75)} total.`,
+    `${T('2:15')} — Finish up to ${W(w)} total. Done within ${T('3:00–3:45')}.`
+  ],
+  timerText: (d, w) => ({ items: [
+    { title: 'Bloom', detail: `Pour ${fmt(d * 2.5)} g of water` },
+    { title: 'First pour', detail: `Up to ${fmt(w * 0.5)} g total, slow circular motion` },
+    { title: 'Second pour', detail: `Up to ${fmt(w * 0.75)} g total` },
+    { title: 'Third pour', detail: `Finish up to ${fmt(w)} g total` },
+    { title: 'Final minutes', detail: 'Let it drain until the end' }
+  ] })
+};
+
+METHODS_EN.switch = {
+  type: 'Hybrid immersion',
+  desc: 'V60 with a valve: controlled immersion + final drawdown. Sweet, repeatable extraction.',
+  specs: { 'Grind': 'medium', 'Temperature': '90–93 °C', 'Time': '3:00–3:30' },
+  hint: '1:15 standard · with light roasts try 1:16',
+  presets: ['1 cup (240 g)', 'Full (360 g)'],
+  steps: (d, w) => [
+    `Valve <b>closed</b>, rinsed filter (open it to drain the rinse water, then close again). Add ${W(d)} of coffee.`,
+    `${T('0:00')} — Pour all ${W(w)} of water and stir gently.`,
+    `Leave to steep with the valve closed.`,
+    `${T('2:00')} — <b>Open the valve</b> and let it drain.`,
+    `Full drainage within ${T('3:00–3:30')}. Variation: open at 1:30 for more acidity, at 2:30 for more body.`
+  ],
+  timerText: (d, w) => ({ items: [
+    { title: 'Pour all the water', detail: `${fmt(w)} g at once, stir gently. Valve closed` },
+    { title: 'Open the valve', detail: 'Let it drain until the end' }
+  ] })
+};
+
+METHODS_EN.moka = {
+  type: 'Steam pressure',
+  desc: "Water is set by the boiler (up to the valve): pick the size and get the right dose. Typical ratio 1:10.",
+  specs: { 'Grind': 'medium-fine (coarser than espresso)', 'Water': 'hot, up to the valve', 'Heat': 'medium-low' },
+  hint: '1:7–1:8 stronger · 1:10 classic · 1:12 lighter',
+  presets: ['1 cup (60 g)', '2 cups (110 g)', '3 cups (165 g)', '6 cups (300 g)'],
+  steps: (d, w) => [
+    `Fill the boiler with ${W(w)} of <b>already hot</b> water up to the valve (never over): it cuts stove time and metallic bitterness.`,
+    `Fill the basket with ${W(d)} of coffee: level, without tamping, tap to settle.`,
+    `Screw on (use a cloth, the base gets hot) and put on medium-low heat, lid open.`,
+    `When the coffee rises with a creamy, steady flow, lower the heat.`,
+    `At the first gurgle <b>remove from heat</b> and cool the base under cold water to stop extraction. Stir in the pot before serving.`
+  ],
+  timerText: (d, w) => ({ items: [
+    `Boiler with ${fmt(w)} g of hot water up to the valve`,
+    `Basket with ${fmt(d)} g of coffee, leveled without tamping`,
+    'Medium-low heat, lid open',
+    'Creamy, steady flow → lower the heat',
+    'First gurgle → remove from heat and cool the base'
+  ] })
+};
+
+METHODS_EN.coldbrew = {
+  type: 'Cold immersion',
+  desc: 'Long cold extraction: sweet, no acidity. Concentrate 1:5–1:10 (to dilute) or ready-to-drink 1:12–1:16.',
+  specs: { 'Grind': 'coarse (breadcrumb-like)', 'Temperature': 'room temp or fridge', 'Time': '12–24 h' },
+  hint: 'Concentrate: 1:8 classic. Final dilution 1:1 with water or milk.',
+  presets: ['500 g water', '1 L water', '2 L water'],
+  steps: (d, w, mode) => {
+    const s = [
+      `Coarsely grind ${W(d)} of coffee and place it in the container (French press, jar or toddy).`,
+      `Pour ${W(w)} of cold or room-temperature water. Stir well to wet all the coffee.`,
+      `Cover and steep: <b>in the fridge ${mode === 'conc' ? '18–24 h' : '12–16 h'}</b>, reduce by ~4 h at room temperature.`,
+      `Filter with a paper filter or fine cloth (double pass for a cleaner cup).`
+    ];
+    if (mode === 'conc') {
+      s.push(`<b>Dilution:</b> this is a concentrate — serve 1:1, e.g. ${W(150)} of concentrate + ${W(150)} of water/milk/ice.`);
+    } else {
+      s.push(`Ready to drink: serve straight over ice, no dilution needed.`);
+    }
+    s.push(`Keeps in the fridge up to 2 weeks (concentrate) or 1 week (ready-to-drink).`);
+    return s;
+  },
+  timerText: () => ({ items: [] })
+};
+
+// ===== UI string dictionary (IT / EN) =====
+const STR = {
+  it: {
+    appTitle: 'Calcolatore Infusioni', appSubtitle: "Dosi, acqua e rapporti corretti per ogni metodo. Le impostazioni vengono salvate automaticamente.",
+    notifyOn: 'Notifiche attive (tocca per disattivare)', notifyOff: 'Attiva notifiche per il timer',
+    themeTitle: 'Tema chiaro / scuro', langTitle: 'Cambia lingua',
+    roastRowLabel: 'Tostatura', roastedOnLabel: 'Tostato il',
+    roastLight: 'Chiara', roastMedium: 'Media', roastDark: 'Scura',
+    methodEyebrow: 'Metodo', grindLabel: 'Macinatura consigliata', grindFine: 'Fine', grindCoarse: 'Grossa',
+    cbConc: 'Concentrato (da diluire)', cbRtd: 'Pronto da bere',
+    doseWaterEyebrow: 'Dose e acqua', doseLabel: 'Caffè (g)', waterLabel: 'Acqua (g / ml)',
+    doseLabelWD: 'Caffè nel filtro (g)', waterLabelWD: 'Acqua in caldaia (g / ml)',
+    ratioLabelText: 'Rapporto caffè : acqua', rvCoffeeWord: 'Caffè', rvWaterWord: 'Acqua',
+    resultEyebrow: 'Risultato', rbCoffee: 'Caffè', rbWater: 'Acqua', rbRatio: 'Rapporto',
+    rbFinalDrink: 'Bevanda finale (dopo diluizione 1:1)', rbCups: 'Tazze da 200 ml',
+    timerBtnDefault: 'Avvia timer guidato', timerBtnMoka: 'Cronometro moka', timerBtnColdbrew: 'Timer infusione a freddo',
+    shareLinkBtn: 'Condividi link', shareImageBtn: 'Condividi immagine',
+    procedureEyebrow: 'Procedura con quantità calcolate',
+    waterQualityTitle: "Qualità dell'acqua",
+    waterTdsTitle: 'TDS / Residuo fisso', waterTdsText: "75–150 mg/L (ideale ~150). Sopra 250 mg/L appiattisce l'estrazione.",
+    waterHardTitle: 'Durezza (GH)', waterHardText: '50–175 ppm CaCO₃ — il calcio/magnesio estrae dolcezza e corpo.',
+    waterAlkTitle: 'Alcalinità (KH)', waterAlkText: "~40 ppm CaCO₃ — troppo alta smorza l'acidità, troppo bassa dà aspro.",
+    waterPhTitle: 'pH', waterPhText: '6,5–7,5. Mai acqua clorata: usa filtrata o oligominerale.',
+    waterNoteText: "In pratica: acqua in bottiglia con residuo fisso 50–150 mg/L, oppure acqua di rubinetto filtrata (es. caraffa con filtro). Evita acqua distillata pura (estrazione piatta) e acqua molto dura (over-estrazione amara e calcare). Per il cold brew la qualità dell'acqua conta ancora di più: l'infusione lunga amplifica i difetti.",
+    footerText: "1 g di acqua ≈ 1 ml · Modifica caffè, acqua o rapporto: gli altri valori si ricalcolano.",
+    diaryTitle: 'Diario infusioni', diaryAddBtn: '+ Aggiungi',
+    diaryCompareBtn: 'Confronta', diaryCompareCancelBtn: 'Annulla confronto',
+    diaryExportBtn: 'Esporta', diaryImportBtn: 'Importa',
+    diaryEmpty: 'Nessuna infusione salvata ancora. Registra la tua prossima tazza per iniziare a tracciare cosa funziona meglio.',
+    dstatBrews: 'Infusioni', dstatAvg: 'Media', dstatFav: 'Preferito', dstatStreak: 'Streak',
+    diaryFormTitle: 'Registra infusione', diaryNotePlaceholder: 'Note di gusto (opzionale): troppo acido, amaro, equilibrato...',
+    diarySaveBtn: 'Salva',
+    compareTitle: 'Confronto ricette', compareSelectToast: "Seleziona un'altra infusione da confrontare (1/2 selezionata).",
+    compareNoNote: 'Nessuna nota',
+    repeatBannerPrefix: '↺ Ultima volta:', repeatLastBtn: 'Ripeti',
+    timerLongformStartBtn: 'Avvia infusione', timerLongformResetBtn: 'Annulla infusione',
+    timerDone: 'Fatto!', timerExtractionDone: 'Estrazione completata. Buon caffè!',
+    timerNextPrefix: 'Prossimo:', timerNextAt: 'a', timerLastStep: "Ultimo step — attendi la fine dell'estrazione",
+    manualStepPrefix: 'Step', manualStepOf: 'di', manualDone: 'Estrazione completata',
+    longformInfo: (h) => `Infusione da ~${h} ore consigliate. Tocca "Avvia" appena versi l'acqua sul caffè.`,
+    longformReady: 'Pronto!', longformReadyInfo: 'La tua infusione a freddo è pronta da filtrare.', longformReadyAt: 'Pronta',
+    notifExtractionTitle: '☕ Estrazione completata', notifExtractionBody: (name) => `${name} è pronto!`,
+    notifMokaTitle: '☕ Moka pronta', notifMokaBody: 'Il caffè è pronto da versare!',
+    notifColdbrewTitle: '☕ Cold brew pronto', notifColdbrewBody: 'La tua infusione a freddo è pronta da filtrare.',
+    notifyBlocked: 'Notifiche bloccate dal browser: abilitale nelle impostazioni del sito.',
+    yourCoffee: 'Il tuo caffè',
+    shareTitle: 'Ricetta caffè', shareText: (name) => `${name} — prova questa ricetta`, shareImageText: (name) => `${name} — la mia ricetta`,
+    linkCopied: 'Link copiato negli appunti!',
+    imgNotSupported: 'Generazione immagine non supportata su questo browser.', imgFailed: "Impossibile generare l'immagine.", imgDownloaded: 'Immagine scaricata!',
+    diarySaved: 'Infusione salvata nel diario!', diaryExported: 'Diario esportato!',
+    diaryImported: (n) => `${n} infusione${n === 1 ? '' : 'i'} importata${n === 1 ? '' : 'e'}.`,
+    diaryImportInvalid: 'File non valido: seleziona un backup del diario esportato da questa app.',
+    recipeReloaded: "Ricetta ricaricata dall'ultima infusione.",
+    canvasHeader: 'RICETTA CAFFÈ', canvasCoffee: 'Caffè', canvasWater: 'Acqua', canvasRatio: 'Rapporto',
+    canvasPct: (c, w) => `${c}% caffè · ${w}% acqua`,
+    canvasRoastGrind: 'TOSTATURA · MACINATURA CONSIGLIATA', canvasLevel: (g) => `livello ${g} di 7`,
+    canvasFooter: 'Calcolatore Infusioni Caffè',
+    roastLightNote: 'Tostatura chiara: più acidità — meglio acqua più calda (verso il massimo del range) e un rapporto leggermente più diluito.',
+    roastDarkNote: 'Tostatura scura: più amaro — meglio acqua meno calda (verso il minimo del range) e un rapporto leggermente più concentrato.',
+    freshFuture: 'La data di tostatura è nel futuro: controlla il valore inserito.',
+    freshVeryRecent: (d) => `Tostato ${d === 0 ? 'oggi' : d + ' giorni fa'} — sta ancora degassando: aspetta qualche giorno per risultati migliori.`,
+    freshPeak: (d) => `Tostato ${d} giorni fa — nel pieno della finestra di freschezza.`,
+    freshGood: (d) => `Tostato ${d} giorni fa — ancora buono: se l'estrazione risulta debole, prova a macinare un po' più fine.`,
+    freshFading: (d) => `Tostato ${d} giorni fa — in calo: macina più fine e con acqua leggermente più calda per compensare.`,
+    freshStale: (d) => `Tostato ${d} giorni fa — probabilmente sta perdendo aromaticità: meglio consumarlo presto o macinarlo più fine.`,
+    roastLabelShort: { light: 'Chiara', medium: 'Media', dark: 'Scura' },
+    localeCode: 'it-IT'
+  },
+  en: {
+    appTitle: 'Brew Calculator', appSubtitle: 'Dose, water and correct ratios for every method. Settings are saved automatically.',
+    notifyOn: 'Notifications on (tap to turn off)', notifyOff: 'Turn on notifications for the timer',
+    themeTitle: 'Light / dark theme', langTitle: 'Change language',
+    roastRowLabel: 'Roast', roastedOnLabel: 'Roasted on',
+    roastLight: 'Light', roastMedium: 'Medium', roastDark: 'Dark',
+    methodEyebrow: 'Method', grindLabel: 'Recommended grind', grindFine: 'Fine', grindCoarse: 'Coarse',
+    cbConc: 'Concentrate (to dilute)', cbRtd: 'Ready to drink',
+    doseWaterEyebrow: 'Dose and water', doseLabel: 'Coffee (g)', waterLabel: 'Water (g / ml)',
+    doseLabelWD: 'Coffee in filter (g)', waterLabelWD: 'Water in boiler (g / ml)',
+    ratioLabelText: 'Coffee : water ratio', rvCoffeeWord: 'Coffee', rvWaterWord: 'Water',
+    resultEyebrow: 'Result', rbCoffee: 'Coffee', rbWater: 'Water', rbRatio: 'Ratio',
+    rbFinalDrink: 'Final drink (after 1:1 dilution)', rbCups: '200 ml cups',
+    timerBtnDefault: 'Start guided timer', timerBtnMoka: 'Moka stopwatch', timerBtnColdbrew: 'Cold brew timer',
+    shareLinkBtn: 'Share link', shareImageBtn: 'Share image',
+    procedureEyebrow: 'Step-by-step with calculated amounts',
+    waterQualityTitle: 'Water quality',
+    waterTdsTitle: 'TDS / Total dissolved solids', waterTdsText: 'Ideal 75–150 mg/L (~150). Above 250 mg/L flattens extraction.',
+    waterHardTitle: 'Hardness (GH)', waterHardText: '50–175 ppm CaCO₃ — calcium/magnesium extract sweetness and body.',
+    waterAlkTitle: 'Alkalinity (KH)', waterAlkText: '~40 ppm CaCO₃ — too high dulls acidity, too low tastes sour.',
+    waterPhTitle: 'pH', waterPhText: '6.5–7.5. Never use chlorinated water: use filtered or low-mineral water.',
+    waterNoteText: 'In practice: bottled water with 50–150 mg/L TDS, or filtered tap water (e.g. pitcher filter). Avoid pure distilled water (flat extraction) and very hard water (bitter over-extraction and scale). For cold brew, water quality matters even more: the long steep amplifies flaws.',
+    footerText: '1 g of water ≈ 1 ml · Change coffee, water or ratio: the others recalculate.',
+    diaryTitle: 'Brew diary', diaryAddBtn: '+ Add',
+    diaryCompareBtn: 'Compare', diaryCompareCancelBtn: 'Cancel compare',
+    diaryExportBtn: 'Export', diaryImportBtn: 'Import',
+    diaryEmpty: 'No brews logged yet. Log your next cup to start tracking what works best.',
+    dstatBrews: 'Brews', dstatAvg: 'Average', dstatFav: 'Favorite', dstatStreak: 'Streak',
+    diaryFormTitle: 'Log brew', diaryNotePlaceholder: 'Tasting notes (optional): too acidic, bitter, balanced...',
+    diarySaveBtn: 'Save',
+    compareTitle: 'Recipe comparison', compareSelectToast: 'Select another brew to compare (1/2 selected).',
+    compareNoNote: 'No notes',
+    repeatBannerPrefix: '↺ Last time:', repeatLastBtn: 'Repeat',
+    timerLongformStartBtn: 'Start brew', timerLongformResetBtn: 'Cancel brew',
+    timerDone: 'Done!', timerExtractionDone: 'Extraction complete. Enjoy your coffee!',
+    timerNextPrefix: 'Next:', timerNextAt: 'at', timerLastStep: 'Last step — wait for extraction to finish',
+    manualStepPrefix: 'Step', manualStepOf: 'of', manualDone: 'Extraction complete',
+    longformInfo: (h) => `Brew of ~${h} recommended hours. Tap "Start" as soon as you pour water over the coffee.`,
+    longformReady: 'Ready!', longformReadyInfo: 'Your cold brew is ready to filter.', longformReadyAt: 'Ready',
+    notifExtractionTitle: '☕ Extraction complete', notifExtractionBody: (name) => `${name} is ready!`,
+    notifMokaTitle: '☕ Moka ready', notifMokaBody: 'Coffee is ready to pour!',
+    notifColdbrewTitle: '☕ Cold brew ready', notifColdbrewBody: 'Your cold brew is ready to filter.',
+    notifyBlocked: 'Notifications blocked by the browser: enable them in the site settings.',
+    yourCoffee: 'Your coffee',
+    shareTitle: 'Coffee recipe', shareText: (name) => `${name} — try this recipe`, shareImageText: (name) => `${name} — my recipe`,
+    linkCopied: 'Link copied to clipboard!',
+    imgNotSupported: 'Image generation not supported in this browser.', imgFailed: 'Could not generate the image.', imgDownloaded: 'Image downloaded!',
+    diarySaved: 'Brew saved to the diary!', diaryExported: 'Diary exported!',
+    diaryImported: (n) => `${n} ${n === 1 ? 'entry' : 'entries'} imported.`,
+    diaryImportInvalid: 'Invalid file: pick a diary backup exported from this app.',
+    recipeReloaded: 'Recipe reloaded from your last brew.',
+    canvasHeader: 'COFFEE RECIPE', canvasCoffee: 'Coffee', canvasWater: 'Water', canvasRatio: 'Ratio',
+    canvasPct: (c, w) => `${c}% coffee · ${w}% water`,
+    canvasRoastGrind: 'ROAST · RECOMMENDED GRIND', canvasLevel: (g) => `level ${g} of 7`,
+    canvasFooter: 'Brew Calculator',
+    roastLightNote: 'Light roast: more acidity — better with hotter water (toward the top of the range) and a slightly more diluted ratio.',
+    roastDarkNote: 'Dark roast: more bitterness — better with cooler water (toward the bottom of the range) and a slightly more concentrated ratio.',
+    freshFuture: 'The roast date is in the future: please check the value.',
+    freshVeryRecent: (d) => `Roasted ${d === 0 ? 'today' : d + ' days ago'} — still degassing: wait a few more days for best results.`,
+    freshPeak: (d) => `Roasted ${d} days ago — right in the freshness window.`,
+    freshGood: (d) => `Roasted ${d} days ago — still good: if extraction feels weak, try a slightly finer grind.`,
+    freshFading: (d) => `Roasted ${d} days ago — fading: grind finer and use slightly hotter water to compensate.`,
+    freshStale: (d) => `Roasted ${d} days ago — likely losing aroma: best to use it soon or grind finer.`,
+    roastLabelShort: { light: 'Light', medium: 'Medium', dark: 'Dark' },
+    localeCode: 'en-US'
+  }
+};
+function t(key) { return STR[state.lang === 'en' ? 'en' : 'it'][key]; }
+function mLang() { return state.lang === 'en' ? 'en' : 'it'; }
+function mType(key) { return mLang() === 'en' ? METHODS_EN[key].type : METHODS[key].type; }
+function mDesc(key) { return mLang() === 'en' ? METHODS_EN[key].desc : METHODS[key].desc; }
+function mHint(key) { return mLang() === 'en' ? METHODS_EN[key].hint : METHODS[key].hint; }
+function mSpecsOf(key) { return mLang() === 'en' ? METHODS_EN[key].specs : METHODS[key].specs; }
+function mPresetLabel(key, i) { return mLang() === 'en' ? METHODS_EN[key].presets[i] : METHODS[key].presets[i].label; }
+function mSteps(key, d, w, mode) { return mLang() === 'en' ? METHODS_EN[key].steps(d, w, mode) : METHODS[key].steps(d, w, mode); }
+function mTimerCfg(key, d, w, mode) {
+  const base = METHODS[key].timer(d, w, mode);
+  if (mLang() !== 'en') return base;
+  const enT = METHODS_EN[key].timerText(d, w, mode);
+  if (base.type === 'guided') {
+    return Object.assign({}, base, { steps: base.steps.map((s, i) => ({ at: s.at, title: enT.items[i].title, detail: enT.items[i].detail })) });
+  }
+  if (base.type === 'manual') {
+    return Object.assign({}, base, { steps: enT.items });
+  }
+  return base;
+}
+
+function applyLang() {
+  document.documentElement.lang = state.lang === 'en' ? 'en' : 'it';
+  document.title = t('appTitle');
+  $('langBtn').textContent = state.lang === 'en' ? 'EN' : 'IT';
+  $('langBtn').title = t('langTitle');
+  $('appTitle').textContent = t('appTitle');
+  $('appSubtitle').textContent = t('appSubtitle');
+  $('roastRowLabel').textContent = t('roastRowLabel');
+  $('roastedOnLabel').textContent = t('roastedOnLabel');
+  const rl = document.querySelector('.roast-btn[data-r="light"]'); if (rl) rl.textContent = t('roastLight');
+  const rm = document.querySelector('.roast-btn[data-r="medium"]'); if (rm) rm.textContent = t('roastMedium');
+  const rd = document.querySelector('.roast-btn[data-r="dark"]'); if (rd) rd.textContent = t('roastDark');
+  $('methodEyebrow').textContent = t('methodEyebrow');
+  $('grindLabel').textContent = t('grindLabel');
+  $('grindFineLabel').textContent = t('grindFine');
+  $('grindCoarseLabel').textContent = t('grindCoarse');
+  const cc = document.querySelector('.toggle[data-cb="conc"]'); if (cc) cc.textContent = t('cbConc');
+  const cr = document.querySelector('.toggle[data-cb="rtd"]'); if (cr) cr.textContent = t('cbRtd');
+  $('doseWaterEyebrow').textContent = t('doseWaterEyebrow');
+  $('ratioLabelText').textContent = t('ratioLabelText');
+  $('rvCoffeeWord').textContent = t('rvCoffeeWord');
+  $('rvWaterWord').textContent = t('rvWaterWord');
+  $('resultEyebrow').textContent = t('resultEyebrow');
+  $('shareBtn').textContent = t('shareLinkBtn');
+  $('shareImageBtn').textContent = t('shareImageBtn');
+  $('procedureEyebrow').textContent = t('procedureEyebrow');
+  $('waterQualityTitle').textContent = t('waterQualityTitle');
+  $('waterTdsTitle').textContent = t('waterTdsTitle'); $('waterTdsText').textContent = t('waterTdsText');
+  $('waterHardTitle').textContent = t('waterHardTitle'); $('waterHardText').textContent = t('waterHardText');
+  $('waterAlkTitle').textContent = t('waterAlkTitle'); $('waterAlkText').textContent = t('waterAlkText');
+  $('waterPhTitle').textContent = t('waterPhTitle'); $('waterPhText').textContent = t('waterPhText');
+  $('waterNoteText').textContent = t('waterNoteText');
+  $('footerText').textContent = t('footerText');
+  $('diaryTitle').textContent = t('diaryTitle');
+  $('diaryAddBtn').textContent = t('diaryAddBtn');
+  $('diaryExportBtn').textContent = t('diaryExportBtn');
+  $('diaryImportBtn').textContent = t('diaryImportBtn');
+  $('diaryCompareBtn').textContent = compareMode ? t('diaryCompareCancelBtn') : t('diaryCompareBtn');
+  $('diaryEmpty').textContent = t('diaryEmpty');
+  $('diaryFormTitle').textContent = t('diaryFormTitle');
+  $('diaryNote').placeholder = t('diaryNotePlaceholder');
+  $('diarySaveBtn').textContent = t('diarySaveBtn');
+  $('compareTitle').textContent = t('compareTitle');
+  $('timerLongformStart').textContent = t('timerLongformStartBtn');
+  $('timerLongformReset').textContent = t('timerLongformResetBtn');
+  updateBellIcon();
+  applyTheme();
+  renderFreshness();
+  render();
+  renderDiary();
+}
+
+var state = { method: 'v60', cbMode: 'conc', roast: 'medium', lang: 'it', vals: {} };
 try {
   const saved = JSON.parse(localStorage.getItem(LS_KEY));
   if (saved && METHODS[saved.method]) state = Object.assign(state, saved);
@@ -759,6 +1152,9 @@ try {
 // Ricetta condivisa via link (?m=v60&d=20&r=15&cb=conc)
 try {
   const params = new URLSearchParams(window.location.search);
+  if (params.has('lang') && (params.get('lang') === 'en' || params.get('lang') === 'it')) {
+    state.lang = params.get('lang');
+  }
   if (params.has('m') && METHODS[params.get('m')]) {
     const key = params.get('m');
     const d = parseFloat(params.get('d'));
@@ -819,12 +1215,12 @@ function renderFreshness() {
   const roastDate = new Date(state.roastDate + 'T00:00:00');
   const days = Math.floor((Date.now() - roastDate.getTime()) / 86400000);
   let msg;
-  if (days < 0) msg = 'La data di tostatura è nel futuro: controlla il valore inserito.';
-  else if (days <= 3) msg = `Tostato ${days === 0 ? 'oggi' : days + ' giorni fa'} — sta ancora degassando: aspetta qualche giorno per risultati migliori.`;
-  else if (days <= 14) msg = `Tostato ${days} giorni fa — nel pieno della finestra di freschezza.`;
-  else if (days <= 21) msg = `Tostato ${days} giorni fa — ancora buono: se l'estrazione risulta debole, prova a macinare un po' più fine.`;
-  else if (days <= 30) msg = `Tostato ${days} giorni fa — in calo: macina più fine e con acqua leggermente più calda per compensare.`;
-  else msg = `Tostato ${days} giorni fa — probabilmente sta perdendo aromaticità: meglio consumarlo presto o macinarlo più fine.`;
+  if (days < 0) msg = t('freshFuture');
+  else if (days <= 3) msg = t('freshVeryRecent')(days);
+  else if (days <= 14) msg = t('freshPeak')(days);
+  else if (days <= 21) msg = t('freshGood')(days);
+  else if (days <= 30) msg = t('freshFading')(days);
+  else msg = t('freshStale')(days);
   el.textContent = msg;
   el.classList.remove('hidden');
 }
@@ -850,15 +1246,15 @@ function render() {
   const water = Math.round(v.dose * v.ratio);
 
   $('mName').textContent = m.name;
-  $('mType').textContent = m.type;
-  $('mDesc').textContent = m.desc;
-  $('mSpecs').innerHTML = Object.entries(m.specs).map(([k2, val]) =>
+  $('mType').textContent = mType(key);
+  $('mDesc').textContent = mDesc(key);
+  $('mSpecs').innerHTML = Object.entries(mSpecsOf(key)).map(([k2, val]) =>
     `<span class="spec"><b>${k2}:</b> ${val2(k2, val)}</span>`).join('');
 
   // Tostatura: aggiusta temperatura consigliata + tip
-  const ra = ROAST[state.roast || 'medium'];
+  const note = roastNote(state.roast || 'medium');
   const tipEl = $('roastTip');
-  if (ra.note && !m.coldbrew) { tipEl.textContent = ra.note; tipEl.classList.remove('hidden'); }
+  if (note && !m.coldbrew) { tipEl.textContent = note; tipEl.classList.remove('hidden'); }
   else tipEl.classList.add('hidden');
 
   // Scala macinatura
@@ -890,16 +1286,16 @@ function render() {
   if (v.ratio > max) v.ratio = max;
   sl.value = v.ratio;
   $('ratioVal').textContent = '1 : ' + v.ratio;
-  $('ratioHint').textContent = m.hint;
+  $('ratioHint').textContent = mHint(key);
 
   $('doseInput').value = Math.round(v.dose * 2) / 2;
   $('waterInput').value = water;
-  $('doseLabel').textContent = m.waterDriven ? 'Caffè nel filtro (g)' : 'Caffè (g)';
-  $('waterLabel').textContent = m.waterDriven ? 'Acqua in caldaia (g / ml)' : 'Acqua (g / ml)';
+  $('doseLabel').textContent = t(m.waterDriven ? 'doseLabelWD' : 'doseLabel');
+  $('waterLabel').textContent = t(m.waterDriven ? 'waterLabelWD' : 'waterLabel');
 
   // Presets
   $('mPresets').innerHTML = m.presets.map((p, i) =>
-    `<button class="preset" data-i="${i}">${p.label}</button>`).join('');
+    `<button class="preset" data-i="${i}">${mPresetLabel(key, i)}</button>`).join('');
   $('mPresets').querySelectorAll('.preset').forEach(b =>
     b.addEventListener('click', () => {
       const p = m.presets[+b.dataset.i];
@@ -910,28 +1306,31 @@ function render() {
   );
 
   // Result banner
-  let banner = `
-    <div class="rb-item"><div class="rb-val">${fmt(v.dose)} g</div><div class="rb-lab">Caffè</div></div>
-    <div class="rb-item"><div class="rb-val">${water} g</div><div class="rb-lab">Acqua</div></div>
-    <div class="rb-item rb-hero"><div class="rb-val">1:${v.ratio}</div><div class="rb-lab">Rapporto</div></div>`;
-  if (m.coldbrew && state.cbMode === 'conc') {
-    banner += `<div class="rb-item"><div class="rb-val">~${Math.round(water * 2 * 0.85)} g</div><div class="rb-lab">Bevanda finale (dopo diluizione 1:1)</div></div>`;
-  } else if (!m.waterDriven && !m.coldbrew) {
-    const cups = Math.max(1, Math.round(water / 200));
-    banner += `<div class="rb-item"><div class="rb-val">~${cups}</div><div class="rb-lab">Tazze da 200 ml</div></div>`;
-  }
-  $('resultBanner').innerHTML = banner;
+  $('resultBanner').innerHTML = buildBanner(m, v, water);
 
   // Steps
-  const steps = m.steps(v.dose, water, state.cbMode);
-  $('mSteps').innerHTML = steps.map(s => `<li>${s}</li>`).join('');
+  $('mSteps').innerHTML = mSteps(key, v.dose, water, state.cbMode).map(s => `<li>${s}</li>`).join('');
 
   // Timer button label
-  $('openTimerBtn').textContent = m.coldbrew ? 'Timer infusione a freddo'
-    : (key === 'moka' ? 'Cronometro moka' : 'Avvia timer guidato');
+  $('openTimerBtn').textContent = m.coldbrew ? t('timerBtnColdbrew')
+    : (key === 'moka' ? t('timerBtnMoka') : t('timerBtnDefault'));
 
   // Barra visiva proporzione
   updateRatioVisual(v.dose, water);
+}
+
+function buildBanner(m, v, water) {
+  let banner = `
+    <div class="rb-item"><div class="rb-val">${fmt(v.dose)} g</div><div class="rb-lab">${t('rbCoffee')}</div></div>
+    <div class="rb-item"><div class="rb-val">${water} g</div><div class="rb-lab">${t('rbWater')}</div></div>
+    <div class="rb-item rb-hero"><div class="rb-val">1:${v.ratio}</div><div class="rb-lab">${t('rbRatio')}</div></div>`;
+  if (m.coldbrew && state.cbMode === 'conc') {
+    banner += `<div class="rb-item"><div class="rb-val">~${Math.round(water * 2 * 0.85)} g</div><div class="rb-lab">${t('rbFinalDrink')}</div></div>`;
+  } else if (!m.waterDriven && !m.coldbrew) {
+    const cups = Math.max(1, Math.round(water / 200));
+    banner += `<div class="rb-item"><div class="rb-val">~${cups}</div><div class="rb-lab">${t('rbCups')}</div></div>`;
+  }
+  return banner;
 }
 
 // Input handlers — bidirectional
@@ -966,32 +1365,30 @@ function renderOutputs(fromSlider) {
   if (document.activeElement !== $('doseInput')) $('doseInput').value = Math.round(v.dose * 2) / 2;
   if (document.activeElement !== $('waterInput') || fromSlider) $('waterInput').value = water;
 
-  let banner = `
-    <div class="rb-item"><div class="rb-val">${fmt(v.dose)} g</div><div class="rb-lab">Caffè</div></div>
-    <div class="rb-item"><div class="rb-val">${water} g</div><div class="rb-lab">Acqua</div></div>
-    <div class="rb-item rb-hero"><div class="rb-val">1:${v.ratio}</div><div class="rb-lab">Rapporto</div></div>`;
-  if (m.coldbrew && state.cbMode === 'conc') {
-    banner += `<div class="rb-item"><div class="rb-val">~${Math.round(water * 2 * 0.85)} g</div><div class="rb-lab">Bevanda finale (dopo diluizione 1:1)</div></div>`;
-  } else if (!m.waterDriven && !m.coldbrew) {
-    const cups = Math.max(1, Math.round(water / 200));
-    banner += `<div class="rb-item"><div class="rb-val">~${cups}</div><div class="rb-lab">Tazze da 200 ml</div></div>`;
-  }
-  $('resultBanner').innerHTML = banner;
-  $('mSteps').innerHTML = m.steps(v.dose, water, state.cbMode).map(s => `<li>${s}</li>`).join('');
+  $('resultBanner').innerHTML = buildBanner(m, v, water);
+  $('mSteps').innerHTML = mSteps(key, v.dose, water, state.cbMode).map(s => `<li>${s}</li>`).join('');
   updateRatioVisual(v.dose, water);
 }
 
 // Tema chiaro/scuro
 function applyTheme() {
-  const t = state.theme || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  document.documentElement.dataset.theme = t;
-  $('themeBtn').textContent = t === 'dark' ? '☀️' : '🌙';
+  const th = state.theme || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.dataset.theme = th;
+  $('themeBtn').textContent = th === 'dark' ? '☀️' : '🌙';
+  $('themeBtn').title = t('themeTitle');
 }
 $('themeBtn').addEventListener('click', () => {
   state.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   save(); applyTheme();
 });
 applyTheme();
+
+// Lingua
+$('langBtn').addEventListener('click', () => {
+  state.lang = state.lang === 'en' ? 'it' : 'en';
+  save();
+  applyLang();
+});
 
 // ===== Timer guidato =====
 const LS_TIMER_KEY = 'coffee-timer-coldbrew-v1';
@@ -1032,9 +1429,9 @@ function openTimer() {
   const m = METHODS[key];
   const v = getVals(key);
   const water = Math.round(v.dose * v.ratio);
-  const cfg = m.timer(v.dose, water, state.cbMode);
+  const cfg = mTimerCfg(key, v.dose, water, state.cbMode);
   timer.type = cfg.type;
-  timer.snapshot = { method: key, methodName: m.name, dose: v.dose, water: water, ratio: v.ratio };
+  timer.snapshot = { method: key, methodName: m.name, dose: v.dose, water: water, ratio: v.ratio, cbMode: m.coldbrew ? state.cbMode : undefined };
   $('timerOverlay').classList.add('show');
   $('timerMethodName').textContent = m.name;
   document.body.style.overflow = 'hidden';
@@ -1067,7 +1464,7 @@ function openTimer() {
     } else {
       $('timerLongformIdle').classList.remove('hidden');
       $('timerLongformActive').classList.add('hidden');
-      $('timerLongformInfo').textContent = `Infusione da ~${cfg.hours} ore consigliate. Tocca "Avvia" appena versi l'acqua sul caffè.`;
+      $('timerLongformInfo').textContent = t('longformInfo')(cfg.hours);
     }
   }
 }
@@ -1102,18 +1499,18 @@ function renderGuidedStep() {
   $('timerStepTitle').textContent = s.title;
   $('timerStepDetail').textContent = s.detail;
   const nxt = timer.steps[timer.currentIdx + 1];
-  $('timerNext').textContent = nxt ? `Prossimo: ${nxt.title} a ${fmtTime(nxt.at)}` : "Ultimo step — attendi la fine dell'estrazione";
+  $('timerNext').textContent = nxt ? `${t('timerNextPrefix')} ${nxt.title} ${t('timerNextAt')} ${fmtTime(nxt.at)}` : t('timerLastStep');
 }
 function finishGuided() {
   if (timer.intervalId) { clearInterval(timer.intervalId); timer.intervalId = null; }
   $('timerTime').textContent = '0:00'; setRing(1);
-  $('timerStepTitle').textContent = 'Fatto!';
-  $('timerStepDetail').textContent = 'Estrazione completata. Buon caffè!';
+  $('timerStepTitle').textContent = t('timerDone');
+  $('timerStepDetail').textContent = t('timerExtractionDone');
   $('timerNext').textContent = '';
   $('timerSaveDiaryGuided').classList.remove('hidden');
   beep(1200, 120); setTimeout(() => beep(1200, 120), 180); setTimeout(() => beep(1200, 220), 360);
   buzz([150, 80, 150, 80, 300]);
-  notifyUser('☕ Estrazione completata', `${timer.snapshot ? timer.snapshot.methodName : 'Il tuo caffè'} è pronto!`);
+  notifyUser(t('notifExtractionTitle'), t('notifExtractionBody')(timer.snapshot ? timer.snapshot.methodName : t('yourCoffee')));
   unlockWake();
 }
 $('timerPlayPause').addEventListener('click', () => {
@@ -1150,7 +1547,7 @@ function tickManual() {
 }
 function renderManualStep() {
   $('timerManualTitle').textContent = timer.steps[timer.currentIdx];
-  $('timerManualCount').textContent = `Step ${timer.currentIdx + 1} di ${timer.steps.length}`;
+  $('timerManualCount').textContent = `${t('manualStepPrefix')} ${timer.currentIdx + 1} ${t('manualStepOf')} ${timer.steps.length}`;
   $('timerPrevStep').disabled = timer.currentIdx === 0;
   $('timerNextStep').textContent = timer.currentIdx === timer.steps.length - 1 ? '✓' : '▶';
   $('timerNextStep').classList.remove('hidden');
@@ -1165,11 +1562,11 @@ $('timerNextStep').addEventListener('click', () => {
   if (timer.currentIdx < timer.steps.length - 1) { timer.currentIdx++; buzz(100); renderManualStep(); }
   else {
     beep(1200, 150); buzz([150, 80, 200]);
-    $('timerManualTitle').textContent = 'Fatto!';
-    $('timerManualCount').textContent = 'Estrazione completata';
+    $('timerManualTitle').textContent = t('timerDone');
+    $('timerManualCount').textContent = t('manualDone');
     $('timerNextStep').classList.add('hidden');
     $('timerSaveDiaryManual').classList.remove('hidden');
-    notifyUser('☕ Moka pronta', 'Il caffè è pronto da versare!');
+    notifyUser(t('notifMokaTitle'), t('notifMokaBody'));
   }
 });
 
@@ -1184,21 +1581,21 @@ function showLongformActive(s) {
   $('timerLongformIdle').classList.add('hidden');
   $('timerLongformActive').classList.remove('hidden');
   $('timerSaveDiaryLongform').classList.remove('hidden');
-  const endStr = new Date(s.end).toLocaleString('it-IT', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  const endStr = new Date(s.end).toLocaleString(t('localeCode'), { weekday: 'short', hour: '2-digit', minute: '2-digit' });
   function tickLong() {
     const rem = s.end - Date.now();
     if (rem <= 0) {
-      $('timerLongformRemaining').textContent = 'Pronto!';
-      $('timerLongformEndInfo').textContent = 'La tua infusione a freddo è pronta da filtrare.';
+      $('timerLongformRemaining').textContent = t('longformReady');
+      $('timerLongformEndInfo').textContent = t('longformReadyInfo');
       if (timer.cbInterval) { clearInterval(timer.cbInterval); timer.cbInterval = null; }
       beep(1200, 150); setTimeout(() => beep(1200, 200), 200);
       buzz([200, 100, 200, 100, 400]);
-      notifyUser('☕ Cold brew pronto', 'La tua infusione a freddo è pronta da filtrare.');
+      notifyUser(t('notifColdbrewTitle'), t('notifColdbrewBody'));
       return;
     }
     const h = Math.floor(rem / 3600000), mnt = Math.floor((rem % 3600000) / 60000);
     $('timerLongformRemaining').textContent = `${h}h ${mnt}m`;
-    $('timerLongformEndInfo').textContent = `Pronta ${endStr}`;
+    $('timerLongformEndInfo').textContent = `${t('longformReadyAt')} ${endStr}`;
   }
   tickLong();
   timer.cbInterval = setInterval(tickLong, 30000);
@@ -1225,7 +1622,7 @@ function updateBellIcon() {
   if (!('Notification' in window)) { btn.style.display = 'none'; return; }
   const enabled = state.notifyEnabled !== false && Notification.permission === 'granted';
   btn.textContent = enabled ? '🔔' : '🔕';
-  btn.title = enabled ? 'Notifiche attive (tocca per disattivare)' : 'Attiva notifiche per il timer';
+  btn.title = enabled ? t('notifyOn') : t('notifyOff');
 }
 $('notifyBtn').addEventListener('click', async () => {
   if (!('Notification' in window)) return;
@@ -1237,7 +1634,7 @@ $('notifyBtn').addEventListener('click', async () => {
       state.notifyEnabled = perm === 'granted';
     } catch (e) {}
   } else {
-    showToast('Notifiche bloccate dal browser: abilitale nelle impostazioni del sito.');
+    showToast(t('notifyBlocked'));
   }
   save(); updateBellIcon();
 });
@@ -1255,6 +1652,7 @@ function buildShareUrl() {
   params.set('m', key);
   params.set('d', v.dose);
   params.set('r', v.ratio);
+  params.set('lang', state.lang || 'it');
   if (METHODS[key].coldbrew) params.set('cb', state.cbMode);
   const url = new URL(window.location.href);
   url.search = params.toString();
@@ -1271,11 +1669,11 @@ $('shareBtn').addEventListener('click', async () => {
   const url = buildShareUrl();
   const m = METHODS[state.method];
   if (navigator.share) {
-    try { await navigator.share({ title: 'Ricetta caffè', text: `${m.name} — prova questa ricetta`, url }); return; } catch (e) {}
+    try { await navigator.share({ title: t('shareTitle'), text: t('shareText')(m.name), url }); return; } catch (e) {}
   }
   try {
     await navigator.clipboard.writeText(url);
-    showToast('Link copiato negli appunti!');
+    showToast(t('linkCopied'));
   } catch (e) {
     showToast(url);
   }
@@ -1307,7 +1705,7 @@ function buildRecipeCanvas() {
 
   ctx.fillStyle = inkFaint;
   ctx.font = '700 26px -apple-system, sans-serif';
-  ctx.fillText('RICETTA CAFFÈ', pad, 110);
+  ctx.fillText(t('canvasHeader'), pad, 110);
 
   ctx.fillStyle = ink;
   ctx.font = '500 80px Georgia, "Times New Roman", serif';
@@ -1315,7 +1713,7 @@ function buildRecipeCanvas() {
 
   ctx.fillStyle = inkSoft;
   ctx.font = '500 32px -apple-system, sans-serif';
-  ctx.fillText(m.type, pad, 254);
+  ctx.fillText(mType(key), pad, 254);
 
   ctx.strokeStyle = line; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(pad, 300); ctx.lineTo(W_ - pad, 300); ctx.stroke();
@@ -1330,9 +1728,9 @@ function buildRecipeCanvas() {
     ctx.font = '700 24px -apple-system, sans-serif';
     ctx.fillText(label.toUpperCase(), x, 508);
   }
-  stat(0, 'Caffè', fmt(v.dose) + 'g', ink);
-  stat(1, 'Acqua', water + 'g', ink);
-  stat(2, 'Rapporto', '1:' + v.ratio, accent);
+  stat(0, t('canvasCoffee'), fmt(v.dose) + 'g', ink);
+  stat(1, t('canvasWater'), water + 'g', ink);
+  stat(2, t('canvasRatio'), '1:' + v.ratio, accent);
 
   const barY = 570, barH = 28, barW = W_ - pad * 2;
   const cPct = v.dose / (v.dose + water);
@@ -1343,10 +1741,10 @@ function buildRecipeCanvas() {
 
   ctx.fillStyle = inkSoft;
   ctx.font = '500 26px -apple-system, sans-serif';
-  ctx.fillText(`${(cPct * 100).toFixed(1)}% caffè · ${(100 - cPct * 100).toFixed(1)}% acqua`, pad, 642);
+  ctx.fillText(t('canvasPct')((cPct * 100).toFixed(1), (100 - cPct * 100).toFixed(1)), pad, 642);
 
   let y = 722;
-  Object.entries(m.specs).forEach(([k2, val]) => {
+  Object.entries(mSpecsOf(key)).forEach(([k2, val]) => {
     ctx.fillStyle = inkFaint;
     ctx.font = '700 24px -apple-system, sans-serif';
     ctx.fillText(k2.toUpperCase(), pad, y);
@@ -1358,34 +1756,34 @@ function buildRecipeCanvas() {
 
   ctx.fillStyle = inkFaint;
   ctx.font = '700 24px -apple-system, sans-serif';
-  const roastLabel = { light: 'Chiara', medium: 'Media', dark: 'Scura' }[state.roast || 'medium'];
-  ctx.fillText('TOSTATURA · MACINATURA CONSIGLIATA', pad, y + 10);
+  const roastLabel = t('roastLabelShort')[state.roast || 'medium'];
+  ctx.fillText(t('canvasRoastGrind'), pad, y + 10);
   ctx.fillStyle = ink;
   ctx.font = '500 32px -apple-system, sans-serif';
-  ctx.fillText(`${roastLabel} · livello ${m.grind} di 7`, pad, y + 48);
+  ctx.fillText(`${roastLabel} · ${t('canvasLevel')(m.grind)}`, pad, y + 48);
 
   ctx.strokeStyle = line; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(pad, H_ - 110); ctx.lineTo(W_ - pad, H_ - 110); ctx.stroke();
   ctx.fillStyle = inkFaint;
   ctx.font = '500 26px -apple-system, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Calcolatore Infusioni Caffè', W_ / 2, H_ - 60);
+  ctx.fillText(t('canvasFooter'), W_ / 2, H_ - 60);
   ctx.textAlign = 'left';
 
   return canvas;
 }
 function shareRecipeImage() {
   const canvas = buildRecipeCanvas();
-  if (!canvas || !canvas.toBlob) { showToast('Generazione immagine non supportata su questo browser.'); return; }
+  if (!canvas || !canvas.toBlob) { showToast(t('imgNotSupported')); return; }
   canvas.toBlob(async (blob) => {
-    if (!blob) { showToast("Impossibile generare l'immagine."); return; }
+    if (!blob) { showToast(t('imgFailed')); return; }
     const key = state.method, m = METHODS[key];
     const fileName = `ricetta-${key}.png`;
     try {
       const file = new File([blob], fileName, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          await navigator.share({ files: [file], title: 'Ricetta caffè', text: `${m.name} — la mia ricetta` });
+          await navigator.share({ files: [file], title: t('shareTitle'), text: t('shareImageText')(m.name) });
           return;
         } catch (e) { if (e && e.name === 'AbortError') return; }
       }
@@ -1395,7 +1793,7 @@ function shareRecipeImage() {
     a.href = url; a.download = fileName;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    showToast('Immagine scaricata!');
+    showToast(t('imgDownloaded'));
   }, 'image/png');
 }
 $('shareImageBtn').addEventListener('click', shareRecipeImage);
@@ -1403,6 +1801,7 @@ $('shareImageBtn').addEventListener('click', shareRecipeImage);
 // ===== Diario infusioni =====
 const LS_DIARY_KEY = 'coffee-brew-diary-v1';
 let pendingDiary = null, pendingRating = 0;
+let compareMode = false, compareSelected = [];
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1434,35 +1833,166 @@ function renderDiaryStats(diary) {
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
   const streak = computeStreak(diary);
   el.innerHTML = `
-    <div class="dstat"><div class="dstat-val">${diary.length}</div><div class="dstat-lab">Infusioni</div></div>
-    <div class="dstat"><div class="dstat-val">${avg ? avg.toFixed(1) + '★' : '—'}</div><div class="dstat-lab">Media</div></div>
-    <div class="dstat"><div class="dstat-val">${escapeHtml(top)}</div><div class="dstat-lab">Preferito</div></div>
-    <div class="dstat"><div class="dstat-val">${streak}g</div><div class="dstat-lab">Streak</div></div>`;
+    <div class="dstat"><div class="dstat-val">${diary.length}</div><div class="dstat-lab">${t('dstatBrews')}</div></div>
+    <div class="dstat"><div class="dstat-val">${avg ? avg.toFixed(1) + '★' : '—'}</div><div class="dstat-lab">${t('dstatAvg')}</div></div>
+    <div class="dstat"><div class="dstat-val">${escapeHtml(top)}</div><div class="dstat-lab">${t('dstatFav')}</div></div>
+    <div class="dstat"><div class="dstat-val">${streak}${state.lang === 'en' ? 'd' : 'g'}</div><div class="dstat-lab">${t('dstatStreak')}</div></div>`;
   el.classList.remove('hidden');
 }
 function renderDiary() {
   const diary = loadDiary();
   $('diaryEmpty').classList.toggle('hidden', diary.length > 0);
   renderDiaryStats(diary);
+  $('diaryCompareBtn').disabled = diary.length < 2 && !compareMode;
   $('diaryList').innerHTML = diary.map(e => {
-    const date = new Date(e.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const date = new Date(e.date).toLocaleDateString(t('localeCode'), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     const stars = e.rating ? `<div class="diary-stars-display">${'★'.repeat(e.rating)}${'☆'.repeat(5 - e.rating)}</div>` : '';
     const note = e.note ? `<div class="diary-item-note">"${escapeHtml(e.note)}"</div>` : '';
+    const check = compareMode ? `<input type="checkbox" class="diary-compare-check" data-id="${e.id}" ${compareSelected.includes(String(e.id)) ? 'checked' : ''}>` : '';
     return `<div class="diary-item">
       <div class="diary-item-top">
-        <span class="diary-item-method">${escapeHtml(e.methodName)}</span>
+        ${check}<span class="diary-item-method">${escapeHtml(e.methodName)}</span>
         <span class="diary-item-date">${date}</span>
-        <button class="diary-del" data-id="${e.id}">✕</button>
+        ${compareMode ? '' : `<button class="diary-del" data-id="${e.id}">✕</button>`}
       </div>
       <div class="diary-item-recipe">${fmt(e.dose)}g : ${fmt(e.water)}g · 1:${e.ratio}</div>
       ${stars}${note}
     </div>`;
   }).join('');
-  $('diaryList').querySelectorAll('.diary-del').forEach(b => b.addEventListener('click', () => {
-    saveDiary(loadDiary().filter(e => String(e.id) !== b.dataset.id));
-    renderDiary();
-  }));
+  if (compareMode) {
+    $('diaryList').querySelectorAll('.diary-compare-check').forEach(cb => cb.addEventListener('change', onCompareCheck));
+  } else {
+    $('diaryList').querySelectorAll('.diary-del').forEach(b => b.addEventListener('click', () => {
+      saveDiary(loadDiary().filter(e => String(e.id) !== b.dataset.id));
+      renderDiary();
+    }));
+  }
+  renderRepeatBanner();
 }
+
+// ===== Confronto ricette =====
+function onCompareCheck(e) {
+  const id = e.target.dataset.id;
+  if (e.target.checked) {
+    compareSelected.push(id);
+    if (compareSelected.length > 2) compareSelected.shift();
+  } else {
+    compareSelected = compareSelected.filter(x => x !== id);
+  }
+  if (compareSelected.length === 2) {
+    openCompare(compareSelected[0], compareSelected[1]);
+    compareMode = false; compareSelected = [];
+    $('diaryCompareBtn').textContent = t('diaryCompareBtn');
+    renderDiary();
+  } else {
+    showToast(t('compareSelectToast'));
+  }
+}
+$('diaryCompareBtn').addEventListener('click', () => {
+  const diary = loadDiary();
+  if (diary.length < 2) return;
+  compareMode = !compareMode;
+  compareSelected = [];
+  $('diaryCompareBtn').textContent = compareMode ? t('diaryCompareCancelBtn') : t('diaryCompareBtn');
+  renderDiary();
+});
+function compareColHtml(e) {
+  const date = new Date(e.date).toLocaleDateString(t('localeCode'), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const stars = e.rating ? `<div class="compare-stars">${'★'.repeat(e.rating)}${'☆'.repeat(5 - e.rating)}</div>` : `<div class="compare-stars">—</div>`;
+  return `<div class="compare-col">
+    <div class="compare-col-method">${escapeHtml(e.methodName)}</div>
+    <div class="compare-col-date">${date}</div>
+    <div class="compare-row"><span>${t('rbCoffee')}</span><b>${fmt(e.dose)} g</b></div>
+    <div class="compare-row"><span>${t('rbWater')}</span><b>${fmt(e.water)} g</b></div>
+    <div class="compare-row"><span>${t('rbRatio')}</span><b>1:${e.ratio}</b></div>
+    <div class="compare-row"><span>${t('dstatAvg')}</span>${stars}</div>
+    <div class="compare-note">${e.note ? '"' + escapeHtml(e.note) + '"' : t('compareNoNote')}</div>
+  </div>`;
+}
+function openCompare(id1, id2) {
+  const diary = loadDiary();
+  const e1 = diary.find(e => String(e.id) === String(id1));
+  const e2 = diary.find(e => String(e.id) === String(id2));
+  if (!e1 || !e2) return;
+  $('compareTitle').textContent = t('compareTitle');
+  $('compareGrid').innerHTML = compareColHtml(e1) + compareColHtml(e2);
+  $('compareOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+$('compareClose').addEventListener('click', () => {
+  $('compareOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+});
+
+// ===== Export / import diario =====
+$('diaryExportBtn').addEventListener('click', () => {
+  const diary = loadDiary();
+  const payload = { app: 'coffee-brew-calc', version: 1, exportedAt: new Date().toISOString(), diary };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${state.lang === 'en' ? 'coffee-diary' : 'diario-caffe'}-${dateStr}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  showToast(t('diaryExported'));
+});
+$('diaryImportBtn').addEventListener('click', () => $('diaryImportFile').click());
+$('diaryImportFile').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const incoming = Array.isArray(data) ? data : (Array.isArray(data.diary) ? data.diary : null);
+      if (!incoming) throw new Error('invalid');
+      const existing = loadDiary();
+      const existingIds = new Set(existing.map(x => String(x.id)));
+      let added = 0;
+      incoming.forEach(entry => {
+        if (entry && typeof entry === 'object' && entry.methodName) {
+          if (!entry.id || existingIds.has(String(entry.id))) entry.id = Date.now() + Math.random();
+          existing.unshift(entry);
+          existingIds.add(String(entry.id));
+          added++;
+        }
+      });
+      saveDiary(existing);
+      renderDiary();
+      showToast(t('diaryImported')(added));
+    } catch (err) {
+      showToast(t('diaryImportInvalid'));
+    }
+    $('diaryImportFile').value = '';
+  };
+  reader.readAsText(file);
+});
+
+// ===== Ripeti ultima infusione =====
+function renderRepeatBanner() {
+  const diary = loadDiary();
+  const wrap = $('repeatBanner');
+  if (!diary.length) { wrap.classList.add('hidden'); return; }
+  const last = diary[0];
+  if (!METHODS[last.method]) { wrap.classList.add('hidden'); return; }
+  $('repeatBannerText').innerHTML = `${t('repeatBannerPrefix')} <b>${escapeHtml(last.methodName)}</b> — <b>${fmt(last.dose)}g : ${fmt(last.water)}g</b>`;
+  $('repeatLastBtn').textContent = t('repeatLastBtn');
+  wrap.classList.remove('hidden');
+}
+$('repeatLastBtn').addEventListener('click', () => {
+  const diary = loadDiary();
+  if (!diary.length) return;
+  const last = diary[0];
+  if (!METHODS[last.method]) return;
+  state.method = last.method;
+  state.vals[last.method] = { dose: last.dose, ratio: last.ratio };
+  if (METHODS[last.method].coldbrew && last.cbMode) state.cbMode = last.cbMode;
+  save();
+  render();
+  showToast(t('recipeReloaded'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 
 function openDiaryForm(prefill) {
   pendingDiary = prefill;
@@ -1485,11 +2015,11 @@ $('diarySaveBtn').addEventListener('click', () => {
   saveDiary(diary);
   renderDiary();
   $('diaryOverlay').classList.remove('show');
-  showToast('Infusione salvata nel diario!');
+  showToast(t('diarySaved'));
 });
 $('diaryAddBtn').addEventListener('click', () => {
   const key = state.method, m = METHODS[key], v = getVals(key);
-  openDiaryForm({ method: key, methodName: m.name, dose: v.dose, water: Math.round(v.dose * v.ratio), ratio: v.ratio });
+  openDiaryForm({ method: key, methodName: m.name, dose: v.dose, water: Math.round(v.dose * v.ratio), ratio: v.ratio, cbMode: m.coldbrew ? state.cbMode : undefined });
 });
 $('timerSaveDiaryGuided').addEventListener('click', () => { if (timer.snapshot) openDiaryForm(timer.snapshot); });
 $('timerSaveDiaryManual').addEventListener('click', () => { if (timer.snapshot) openDiaryForm(timer.snapshot); });
@@ -1497,10 +2027,14 @@ $('timerSaveDiaryLongform').addEventListener('click', () => { if (timer.snapshot
 
 renderDiary();
 render();
+applyLang();
 </script>
+
 <script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
 }
 </script>
 </body>
