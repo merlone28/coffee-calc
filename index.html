@@ -114,8 +114,14 @@
   .roast-date-input:focus { outline: none; border-color: var(--accent); }
   .freshness-tip {
     font-size: 0.82rem; color: var(--ink-soft); margin: 14px 0 0; line-height: 1.5;
-    border-left: 3px solid var(--accent); padding: 2px 0 2px 14px;
+    background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px 14px;
   }
+  .fresh-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .fresh-day { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink); font-size: 0.85rem; }
+  .fresh-phase { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .fresh-bar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; margin-bottom: 8px; }
+  .fresh-bar-fill { height: 100%; border-radius: 999px; transition: width .4s ease; }
+  .fresh-msg { font-size: 0.8rem; color: var(--ink-soft); }
 
   /* ---------- Method selector ---------- */
   .tabs {
@@ -393,12 +399,27 @@
   .diary-item-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .diary-item-method { font-weight: 700; color: var(--ink); font-size: 0.87rem; }
   .diary-item-date { font-size: 0.7rem; color: var(--ink-faint); white-space: nowrap; }
-  .diary-del { border: none; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 0.85rem; padding: 2px 4px; }
-  .diary-del:hover { color: var(--accent); }
-  .diary-del .svg-icon { width: 14px; height: 14px; }
-  .diary-item-recipe { font-size: 0.79rem; color: var(--ink-soft); margin: 5px 0; font-family: var(--font-mono); }
-  .diary-stars-display { color: var(--accent); font-size: 0.88rem; letter-spacing: 2px; }
-  .diary-item-note { font-size: 0.84rem; color: var(--ink); font-style: italic; margin-top: 5px; }
+  .diary-del, .diary-edit { border: none; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 0.85rem; padding: 4px 5px; flex-shrink: 0; }
+  .diary-del:hover, .diary-edit:hover { color: var(--accent); }
+  .diary-del .svg-icon, .diary-edit .svg-icon { width: 15px; height: 15px; }
+  .diary-del.confirm {
+    background: var(--accent); color: var(--accent-ink); border-radius: 999px;
+    font-size: 0.68rem; font-weight: 700; padding: 4px 10px; font-family: var(--font-sans);
+  }
+  .diary-item-recipe { font-size: 0.82rem; color: var(--ink-soft); margin: 6px 0 4px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .diary-stars-display { color: var(--accent); font-size: 0.9rem; letter-spacing: 2px; margin: 2px 0; }
+  .diary-item-note {
+    font-size: 0.87rem; color: var(--ink); font-style: italic; margin-top: 6px; line-height: 1.5;
+    cursor: pointer; border-left: 2px solid var(--line); padding-left: 10px;
+  }
+  .diary-item-note.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .diary-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .diary-filter-chip {
+    border: 1px solid var(--line); background: transparent; color: var(--ink-soft);
+    padding: 6px 13px; border-radius: 999px; font-size: 0.76rem; font-weight: 600; cursor: pointer;
+    font-family: var(--font-sans); transition: all .2s ease;
+  }
+  .diary-filter-chip.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
   .diary-form-recipe { color: var(--ink-soft); font-size: 0.92rem; margin-bottom: 18px; font-family: var(--font-mono); }
   .diary-stars { display: flex; gap: 8px; font-size: 2.1rem; margin-bottom: 20px; }
@@ -406,8 +427,8 @@
   .diary-stars button:hover { transform: scale(1.12); }
   .diary-stars button.filled { color: var(--accent); }
   .diary-note {
-    width: 100%; max-width: 380px; min-height: 84px; border: 1.5px solid var(--line); border-radius: var(--r-sm);
-    padding: 12px; font-family: var(--font-sans); font-size: 0.9rem; color: var(--ink); background: var(--paper);
+    width: 100%; max-width: 420px; min-height: 110px; border: 1.5px solid var(--line); border-radius: var(--r-sm);
+    padding: 14px; font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.5; color: var(--ink); background: var(--paper);
     resize: vertical; margin-bottom: 18px; transition: border-color .2s ease;
   }
   .diary-note:focus { outline: none; border-color: var(--accent); }
@@ -531,6 +552,15 @@
     <div class="ratio-hint" id="ratioHint"></div>
   </div>
 
+  <div class="ratio-row" id="tempRow" style="display:none">
+    <div class="ratio-label">
+      <span id="tempLabelText">Temperatura acqua</span>
+      <span class="ratio-value" id="tempVal"></span>
+    </div>
+    <input type="range" id="tempSlider" step="1">
+    <div class="ratio-hint" id="tempHint"></div>
+  </div>
+
   <div class="hidden" id="resultEyebrow"></div>
   <div class="result-banner" id="resultBanner"></div>
   <div class="action-row">
@@ -574,6 +604,7 @@
     <button class="diary-action-btn" id="diaryImportBtn">Importa</button>
     <input type="file" id="diaryImportFile" accept="application/json" class="hidden">
   </div>
+  <div class="diary-filter hidden" id="diaryFilter"></div>
   <div class="diary-stats hidden" id="diaryStats"></div>
   <div class="diary-empty" id="diaryEmpty">Nessuna infusione salvata ancora. Registra la tua prossima tazza per iniziare a tracciare cosa funziona meglio.</div>
   <div class="diary-list" id="diaryList"></div>
@@ -697,7 +728,7 @@ function val2(key, val) {
 
 const METHODS = {
   v60: {
-    name: 'Hario V60', icon: '🌀', type: 'Percolazione', dose: 20, ratio: 15, min: 14, max: 17, grind: 3,
+    name: 'Hario V60', icon: '🌀', type: 'Percolazione', dose: 20, ratio: 15, min: 14, max: 17, grind: 3, temp: [92, 96],
     desc: 'Pour-over conico: tazza pulita e brillante. Il rapporto classico è 1:15 (≈ 60 g/L).',
     specs: { 'Macinatura': 'media-fine (zucchero)', 'Temperatura': '92–96 °C', 'Tempo': '2:30–3:30' },
     hint: '1:14 più intenso · 1:17 più leggero e delicato',
@@ -720,7 +751,7 @@ const METHODS = {
     })
   },
   aeropress: {
-    name: 'AeroPress', icon: '💨', type: 'Immersione + pressione', dose: 15, ratio: 13, min: 10, max: 17, grind: 3,
+    name: 'AeroPress', icon: '💨', type: 'Immersione + pressione', dose: 15, ratio: 13, min: 10, max: 17, grind: 3, temp: [85, 92],
     desc: 'Versatile e corposo. Rapporti concentrati (1:10–1:12) per stile "espresso", 1:15–1:17 per tazza filtro.',
     specs: { 'Macinatura': 'media-fine', 'Temperatura': '85–92 °C', 'Tempo': '~2:00' },
     hint: '1:10–1:12 concentrato · 1:13 equilibrato · 1:15+ stile filtro',
@@ -741,7 +772,7 @@ const METHODS = {
     })
   },
   kalita: {
-    name: 'Kalita 101', icon: '💧', type: 'Percolazione', dose: 16, ratio: 16, min: 15, max: 17, grind: 4,
+    name: 'Kalita 101', icon: '💧', type: 'Percolazione', dose: 16, ratio: 16, min: 15, max: 17, grind: 4, temp: [90, 94],
     desc: 'Dripper a fondo piatto per 1–2 tazze: estrazione uniforme e tollerante. Rapporto tipico 1:16.',
     specs: { 'Macinatura': 'media', 'Temperatura': '90–94 °C', 'Tempo': '3:00–3:45' },
     hint: '1:15 più corpo · 1:17 più tè-like',
@@ -765,7 +796,7 @@ const METHODS = {
     })
   },
   switch: {
-    name: 'Hario Switch', icon: '🔀', type: 'Immersione ibrida', dose: 20, ratio: 15, min: 14, max: 17, grind: 4,
+    name: 'Hario Switch', icon: '🔀', type: 'Immersione ibrida', dose: 20, ratio: 15, min: 14, max: 17, grind: 4, temp: [90, 93],
     desc: 'V60 con valvola: immersione controllata + percolazione finale. Estrazione dolce e ripetibile.',
     specs: { 'Macinatura': 'media', 'Temperatura': '90–93 °C', 'Tempo': '3:00–3:30' },
     hint: '1:15 standard · con caffè chiari prova 1:16',
@@ -1038,6 +1069,15 @@ const STR = {
     freshFading: (d) => `Tostato ${d} giorni fa — in calo: macina più fine e con acqua leggermente più calda per compensare.`,
     freshStale: (d) => `Tostato ${d} giorni fa — probabilmente sta perdendo aromaticità: meglio consumarlo presto o macinarlo più fine.`,
     roastLabelShort: { light: 'Chiara', medium: 'Media', dark: 'Scura' },
+    tempLabel: 'Temperatura acqua', rbTemp: 'Temperatura',
+    tempRange: (a, b) => `Range consigliato per questa tostatura: ${a}–${b} °C`,
+    freshDay: (d) => d === 0 ? 'Oggi' : `Giorno ${d}`,
+    freshPhases: { degas: 'Degasaggio', peak: 'Picco di freschezza', good: 'Ancora buono', fading: 'In calo', stale: 'Oltre il meglio' },
+    diaryFilterAll: 'Tutti',
+    diaryEditTitle: 'Modifica infusione', diaryUpdated: 'Infusione aggiornata!',
+    diaryDeleteConfirm: 'Elimino?',
+    diaryImportSkipped: (s) => ` · ${s} duplicat${s === 1 ? 'o' : 'i'} saltat${s === 1 ? 'o' : 'i'}`,
+    diarySettingsRestored: ' · impostazioni tostatura ripristinate',
     localeCode: 'it-IT'
   },
   en: {
@@ -1104,6 +1144,15 @@ const STR = {
     freshFading: (d) => `Roasted ${d} days ago — fading: grind finer and use slightly hotter water to compensate.`,
     freshStale: (d) => `Roasted ${d} days ago — likely losing aroma: best to use it soon or grind finer.`,
     roastLabelShort: { light: 'Light', medium: 'Medium', dark: 'Dark' },
+    tempLabel: 'Water temperature', rbTemp: 'Temperature',
+    tempRange: (a, b) => `Suggested range for this roast: ${a}–${b} °C`,
+    freshDay: (d) => d === 0 ? 'Today' : `Day ${d}`,
+    freshPhases: { degas: 'Degassing', peak: 'Peak freshness', good: 'Still good', fading: 'Fading', stale: 'Past its best' },
+    diaryFilterAll: 'All',
+    diaryEditTitle: 'Edit brew', diaryUpdated: 'Brew updated!',
+    diaryDeleteConfirm: 'Delete?',
+    diaryImportSkipped: (s) => ` · ${s} duplicate${s === 1 ? '' : 's'} skipped`,
+    diarySettingsRestored: ' · roast settings restored',
     localeCode: 'en-US'
   }
 };
@@ -1141,6 +1190,7 @@ function applyLang() {
   const rm = document.querySelector('.roast-btn[data-r="medium"]'); if (rm) rm.textContent = t('roastMedium');
   const rd = document.querySelector('.roast-btn[data-r="dark"]'); if (rd) rd.textContent = t('roastDark');
   $('methodEyebrow').textContent = t('methodEyebrow');
+  $('tempLabelText').textContent = t('tempLabel');
   $('grindLabel').textContent = t('grindLabel');
   $('grindFineLabel').textContent = t('grindFine');
   $('grindCoarseLabel').textContent = t('grindCoarse');
@@ -1201,6 +1251,8 @@ try {
       dose: d > 0 ? d : METHODS[key].dose,
       ratio: r > 0 ? r : METHODS[key].ratio
     };
+    const tw = parseInt(params.get('tw'), 10);
+    if (tw > 0) state.vals[key].temp = tw;
     save();
     if (window.history && window.history.replaceState) {
       window.history.replaceState({}, '', window.location.pathname);
@@ -1249,14 +1301,25 @@ function renderFreshness() {
   if (!state.roastDate) { el.classList.add('hidden'); return; }
   const roastDate = new Date(state.roastDate + 'T00:00:00');
   const days = Math.floor((Date.now() - roastDate.getTime()) / 86400000);
-  let msg;
-  if (days < 0) msg = t('freshFuture');
-  else if (days <= 3) msg = t('freshVeryRecent')(days);
-  else if (days <= 14) msg = t('freshPeak')(days);
-  else if (days <= 21) msg = t('freshGood')(days);
-  else if (days <= 30) msg = t('freshFading')(days);
-  else msg = t('freshStale')(days);
-  el.textContent = msg;
+  if (days < 0) {
+    el.textContent = t('freshFuture');
+    el.classList.remove('hidden');
+    return;
+  }
+  let msg, phase, color;
+  if (days <= 3) { msg = t('freshVeryRecent')(days); phase = 'degas'; color = '#7d90ad'; }
+  else if (days <= 14) { msg = t('freshPeak')(days); phase = 'peak'; color = '#4a8f5d'; }
+  else if (days <= 21) { msg = t('freshGood')(days); phase = 'good'; color = '#8a9a45'; }
+  else if (days <= 30) { msg = t('freshFading')(days); phase = 'fading'; color = '#c07f2f'; }
+  else { msg = t('freshStale')(days); phase = 'stale'; color = '#b04a3c'; }
+  const pct = Math.max(3, Math.min(100, (days / 35) * 100));
+  el.innerHTML = `
+    <div class="fresh-head">
+      <span class="fresh-day">${t('freshDay')(days)}</span>
+      <span class="fresh-phase" style="color:${color}">${t('freshPhases')[phase]}</span>
+    </div>
+    <div class="fresh-bar"><div class="fresh-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    <div class="fresh-msg">${msg}</div>`;
   el.classList.remove('hidden');
 }
 renderFreshness();
@@ -1324,6 +1387,23 @@ function render() {
   $('ratioVal').textContent = '1 : ' + v.ratio;
   $('ratioHint').textContent = mHint(key);
 
+  // Temperatura acqua (solo metodi a caldo, range adattato alla tostatura)
+  const tempRow = $('tempRow');
+  if (m.temp) {
+    const tDelta = ROAST[state.roast || 'medium'].tempDelta;
+    const tmin = m.temp[0] + tDelta, tmax = m.temp[1] + tDelta;
+    if (v.temp == null) v.temp = Math.round((tmin + tmax) / 2);
+    if (v.temp < tmin) v.temp = tmin;
+    if (v.temp > tmax) v.temp = tmax;
+    const ts = $('tempSlider');
+    ts.min = tmin; ts.max = tmax; ts.value = v.temp;
+    $('tempVal').textContent = v.temp + ' °C';
+    $('tempHint').textContent = t('tempRange')(tmin, tmax);
+    tempRow.style.display = '';
+  } else {
+    tempRow.style.display = 'none';
+  }
+
   $('doseInput').value = Math.round(v.dose * 2) / 2;
   $('waterInput').value = water;
   $('doseLabel').textContent = t(m.waterDriven ? 'doseLabelWD' : 'doseLabel');
@@ -1360,6 +1440,9 @@ function buildBanner(m, v, water) {
     <div class="rb-item"><div class="rb-val">${fmt(v.dose)} g</div><div class="rb-lab">${t('rbCoffee')}</div></div>
     <div class="rb-item"><div class="rb-val">${water} g</div><div class="rb-lab">${t('rbWater')}</div></div>
     <div class="rb-item rb-hero"><div class="rb-val">1:${v.ratio}</div><div class="rb-lab">${t('rbRatio')}</div></div>`;
+  if (m.temp && v.temp != null) {
+    banner += `<div class="rb-item"><div class="rb-val">${v.temp}°</div><div class="rb-lab">${t('rbTemp')}</div></div>`;
+  }
   if (m.coldbrew && state.cbMode === 'conc') {
     banner += `<div class="rb-item"><div class="rb-val">~${Math.round(water * 2 * 0.85)} g</div><div class="rb-lab">${t('rbFinalDrink')}</div></div>`;
   } else if (!m.waterDriven && !m.coldbrew) {
@@ -1389,6 +1472,12 @@ $('ratioSlider').addEventListener('input', () => {
   v.ratio = parseFloat($('ratioSlider').value);
   // keep dose fixed, recompute water
   save(); renderOutputs(true);
+});
+$('tempSlider').addEventListener('input', () => {
+  const v = getVals(state.method);
+  v.temp = parseInt($('tempSlider').value, 10);
+  $('tempVal').textContent = v.temp + ' °C';
+  save(); renderOutputs();
 });
 
 // Lighter re-render that doesn't rebuild inputs being typed into
@@ -1467,7 +1556,7 @@ function openTimer() {
   const water = Math.round(v.dose * v.ratio);
   const cfg = mTimerCfg(key, v.dose, water, state.cbMode);
   timer.type = cfg.type;
-  timer.snapshot = { method: key, methodName: m.name, dose: v.dose, water: water, ratio: v.ratio, cbMode: m.coldbrew ? state.cbMode : undefined };
+  timer.snapshot = { method: key, methodName: m.name, dose: v.dose, water: water, ratio: v.ratio, temp: m.temp ? v.temp : undefined, cbMode: m.coldbrew ? state.cbMode : undefined };
   $('timerOverlay').classList.add('show');
   $('timerMethodName').textContent = m.name;
   document.body.style.overflow = 'hidden';
@@ -1689,6 +1778,7 @@ function buildShareUrl() {
   params.set('m', key);
   params.set('d', v.dose);
   params.set('r', v.ratio);
+  if (METHODS[key].temp && v.temp != null) params.set('tw', v.temp);
   params.set('lang', state.lang || 'it');
   if (METHODS[key].coldbrew) params.set('cb', state.cbMode);
   const url = new URL(window.location.href);
@@ -1839,6 +1929,7 @@ $('shareImageBtn').addEventListener('click', shareRecipeImage);
 const LS_DIARY_KEY = 'coffee-brew-diary-v1';
 let pendingDiary = null, pendingRating = 0;
 let compareMode = false, compareSelected = [];
+let diaryFilter = null, editingDiaryId = null;
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1881,28 +1972,66 @@ function renderDiary() {
   $('diaryEmpty').classList.toggle('hidden', diary.length > 0);
   renderDiaryStats(diary);
   $('diaryCompareBtn').disabled = diary.length < 2 && !compareMode;
-  $('diaryList').innerHTML = diary.map(e => {
+
+  // Filtro per metodo
+  const methodsPresent = [...new Set(diary.map(e => e.method))].filter(k => METHODS[k]);
+  const fWrap = $('diaryFilter');
+  if (methodsPresent.length > 1 && !compareMode) {
+    if (diaryFilter && !methodsPresent.includes(diaryFilter)) diaryFilter = null;
+    fWrap.innerHTML = `<button class="diary-filter-chip ${!diaryFilter ? 'active' : ''}" data-f="">${t('diaryFilterAll')}</button>` +
+      methodsPresent.map(k => `<button class="diary-filter-chip ${diaryFilter === k ? 'active' : ''}" data-f="${k}">${METHODS[k].name}</button>`).join('');
+    fWrap.classList.remove('hidden');
+    fWrap.querySelectorAll('.diary-filter-chip').forEach(b =>
+      b.addEventListener('click', () => { diaryFilter = b.dataset.f || null; renderDiary(); }));
+  } else {
+    fWrap.classList.add('hidden');
+    if (compareMode) diaryFilter = null;
+  }
+
+  const shown = diaryFilter ? diary.filter(e => e.method === diaryFilter) : diary;
+  const xIcon = '<svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  const penIcon = '<svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>';
+  $('diaryList').innerHTML = shown.map(e => {
     const date = new Date(e.date).toLocaleDateString(t('localeCode'), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     const stars = e.rating ? `<div class="diary-stars-display">${'★'.repeat(e.rating)}${'☆'.repeat(5 - e.rating)}</div>` : '';
-    const note = e.note ? `<div class="diary-item-note">"${escapeHtml(e.note)}"</div>` : '';
+    const noteClamp = e.note && e.note.length > 90 ? ' clamp' : '';
+    const note = e.note ? `<div class="diary-item-note${noteClamp}" data-id="${e.id}">"${escapeHtml(e.note)}"</div>` : '';
+    const temp = e.temp ? ` · ${e.temp} °C` : '';
     const check = compareMode ? `<input type="checkbox" class="diary-compare-check" data-id="${e.id}" ${compareSelected.includes(String(e.id)) ? 'checked' : ''}>` : '';
+    const actions = compareMode ? '' :
+      `<button class="diary-edit" data-id="${e.id}" title="${t('diaryEditTitle')}">${penIcon}</button>` +
+      `<button class="diary-del" data-id="${e.id}">${xIcon}</button>`;
     return `<div class="diary-item">
       <div class="diary-item-top">
         ${check}<span class="diary-item-method">${escapeHtml(e.methodName)}</span>
         <span class="diary-item-date">${date}</span>
-        ${compareMode ? '' : `<button class="diary-del" data-id="${e.id}"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`}
+        ${actions}
       </div>
-      <div class="diary-item-recipe">${fmt(e.dose)}g : ${fmt(e.water)}g · 1:${e.ratio}</div>
+      <div class="diary-item-recipe">${fmt(e.dose)} g → ${fmt(e.water)} g · 1:${e.ratio}${temp}</div>
       ${stars}${note}
     </div>`;
   }).join('');
+
   if (compareMode) {
     $('diaryList').querySelectorAll('.diary-compare-check').forEach(cb => cb.addEventListener('change', onCompareCheck));
   } else {
     $('diaryList').querySelectorAll('.diary-del').forEach(b => b.addEventListener('click', () => {
-      saveDiary(loadDiary().filter(e => String(e.id) !== b.dataset.id));
-      renderDiary();
+      if (b.classList.contains('confirm')) {
+        saveDiary(loadDiary().filter(e => String(e.id) !== b.dataset.id));
+        renderDiary();
+      } else {
+        $('diaryList').querySelectorAll('.diary-del.confirm').forEach(x => { x.classList.remove('confirm'); x.innerHTML = xIcon; });
+        b.classList.add('confirm');
+        b.textContent = t('diaryDeleteConfirm');
+        setTimeout(() => { if (b.isConnected && b.classList.contains('confirm')) { b.classList.remove('confirm'); b.innerHTML = xIcon; } }, 3000);
+      }
     }));
+    $('diaryList').querySelectorAll('.diary-edit').forEach(b => b.addEventListener('click', () => {
+      const entry = loadDiary().find(e => String(e.id) === b.dataset.id);
+      if (entry) openDiaryForm(entry, true);
+    }));
+    $('diaryList').querySelectorAll('.diary-item-note').forEach(n =>
+      n.addEventListener('click', () => n.classList.toggle('clamp')));
   }
   renderRepeatBanner();
 }
@@ -1942,6 +2071,7 @@ function compareColHtml(e) {
     <div class="compare-row"><span>${t('rbCoffee')}</span><b>${fmt(e.dose)} g</b></div>
     <div class="compare-row"><span>${t('rbWater')}</span><b>${fmt(e.water)} g</b></div>
     <div class="compare-row"><span>${t('rbRatio')}</span><b>1:${e.ratio}</b></div>
+    <div class="compare-row"><span>${t('rbTemp')}</span><b>${e.temp ? e.temp + ' °C' : '—'}</b></div>
     <div class="compare-row"><span>${t('dstatAvg')}</span>${stars}</div>
     <div class="compare-note">${e.note ? '"' + escapeHtml(e.note) + '"' : t('compareNoNote')}</div>
   </div>`;
@@ -1964,7 +2094,11 @@ $('compareClose').addEventListener('click', () => {
 // ===== Export / import diario =====
 $('diaryExportBtn').addEventListener('click', () => {
   const diary = loadDiary();
-  const payload = { app: 'coffee-brew-calc', version: 1, exportedAt: new Date().toISOString(), diary };
+  const payload = {
+    app: 'coffee-brew-calc', version: 2, exportedAt: new Date().toISOString(),
+    settings: { roast: state.roast || 'medium', roastDate: state.roastDate || null },
+    diary
+  };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const dateStr = new Date().toISOString().slice(0, 10);
@@ -1986,18 +2120,31 @@ $('diaryImportFile').addEventListener('change', (e) => {
       if (!incoming) throw new Error('invalid');
       const existing = loadDiary();
       const existingIds = new Set(existing.map(x => String(x.id)));
-      let added = 0;
+      let added = 0, skipped = 0;
       incoming.forEach(entry => {
         if (entry && typeof entry === 'object' && entry.methodName) {
-          if (!entry.id || existingIds.has(String(entry.id))) entry.id = Date.now() + Math.random();
-          existing.unshift(entry);
+          if (entry.id && existingIds.has(String(entry.id))) { skipped++; return; }
+          if (!entry.id) entry.id = Date.now() + Math.random();
+          existing.push(entry);
           existingIds.add(String(entry.id));
           added++;
         }
       });
+      existing.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
       saveDiary(existing);
+      // Ripristina impostazioni tostatura se presenti nel backup (v2)
+      let settingsMsg = '';
+      if (data && data.settings && typeof data.settings === 'object') {
+        if (data.settings.roast && ROAST[data.settings.roast]) state.roast = data.settings.roast;
+        if ('roastDate' in data.settings) {
+          state.roastDate = data.settings.roastDate || null;
+          $('roastDateInput').value = state.roastDate || '';
+        }
+        save(); renderFreshness(); render();
+        settingsMsg = t('diarySettingsRestored');
+      }
       renderDiary();
-      showToast(t('diaryImported')(added));
+      showToast(t('diaryImported')(added) + (skipped ? t('diaryImportSkipped')(skipped) : '') + settingsMsg);
     } catch (err) {
       showToast(t('diaryImportInvalid'));
     }
@@ -2024,6 +2171,7 @@ $('repeatLastBtn').addEventListener('click', () => {
   if (!METHODS[last.method]) return;
   state.method = last.method;
   state.vals[last.method] = { dose: last.dose, ratio: last.ratio };
+  if (last.temp) state.vals[last.method].temp = last.temp;
   if (METHODS[last.method].coldbrew && last.cbMode) state.cbMode = last.cbMode;
   save();
   render();
@@ -2031,23 +2179,39 @@ $('repeatLastBtn').addEventListener('click', () => {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
-function openDiaryForm(prefill) {
+function openDiaryForm(prefill, isEdit) {
   pendingDiary = prefill;
-  pendingRating = 0;
-  $('diaryFormRecipe').textContent = `${prefill.methodName} — ${fmt(prefill.dose)}g : ${fmt(prefill.water)}g (1:${prefill.ratio})`;
-  $('diaryStars').querySelectorAll('button').forEach(b => b.classList.remove('filled'));
-  $('diaryNote').value = '';
+  editingDiaryId = isEdit ? prefill.id : null;
+  pendingRating = isEdit ? (prefill.rating || 0) : 0;
+  $('diaryFormTitle').textContent = isEdit ? t('diaryEditTitle') : t('diaryFormTitle');
+  const temp = prefill.temp ? ` · ${prefill.temp} °C` : '';
+  $('diaryFormRecipe').textContent = `${prefill.methodName} — ${fmt(prefill.dose)}g : ${fmt(prefill.water)}g (1:${prefill.ratio})${temp}`;
+  $('diaryStars').querySelectorAll('button').forEach(b => b.classList.toggle('filled', parseInt(b.dataset.v, 10) <= pendingRating));
+  $('diaryNote').value = isEdit ? (prefill.note || '') : '';
   $('diaryOverlay').classList.add('show');
 }
 $('diaryStars').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
   pendingRating = parseInt(b.dataset.v, 10);
   $('diaryStars').querySelectorAll('button').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.v, 10) <= pendingRating));
 }));
-$('diaryClose').addEventListener('click', () => $('diaryOverlay').classList.remove('show'));
+$('diaryClose').addEventListener('click', () => { editingDiaryId = null; $('diaryOverlay').classList.remove('show'); });
 $('diarySaveBtn').addEventListener('click', () => {
   if (!pendingDiary) return;
-  const entry = Object.assign({ id: Date.now(), date: new Date().toISOString(), rating: pendingRating, note: $('diaryNote').value.trim() }, pendingDiary);
   const diary = loadDiary();
+  if (editingDiaryId != null) {
+    const i = diary.findIndex(e => String(e.id) === String(editingDiaryId));
+    if (i >= 0) {
+      diary[i].rating = pendingRating;
+      diary[i].note = $('diaryNote').value.trim();
+    }
+    saveDiary(diary);
+    renderDiary();
+    $('diaryOverlay').classList.remove('show');
+    showToast(t('diaryUpdated'));
+    editingDiaryId = null;
+    return;
+  }
+  const entry = Object.assign({ id: Date.now(), date: new Date().toISOString(), rating: pendingRating, note: $('diaryNote').value.trim() }, pendingDiary);
   diary.unshift(entry);
   saveDiary(diary);
   renderDiary();
@@ -2056,7 +2220,7 @@ $('diarySaveBtn').addEventListener('click', () => {
 });
 $('diaryAddBtn').addEventListener('click', () => {
   const key = state.method, m = METHODS[key], v = getVals(key);
-  openDiaryForm({ method: key, methodName: m.name, dose: v.dose, water: Math.round(v.dose * v.ratio), ratio: v.ratio, cbMode: m.coldbrew ? state.cbMode : undefined });
+  openDiaryForm({ method: key, methodName: m.name, dose: v.dose, water: Math.round(v.dose * v.ratio), ratio: v.ratio, temp: m.temp ? v.temp : undefined, cbMode: m.coldbrew ? state.cbMode : undefined });
 });
 $('timerSaveDiaryGuided').addEventListener('click', () => { if (timer.snapshot) openDiaryForm(timer.snapshot); });
 $('timerSaveDiaryManual').addEventListener('click', () => { if (timer.snapshot) openDiaryForm(timer.snapshot); });
