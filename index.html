@@ -90,6 +90,17 @@
   }
   .roast-btn:last-child { border-right: none; }
   .roast-btn.active { background: var(--ink); color: var(--paper); font-weight: 700; }
+  .roast-date-field { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .roast-date-input {
+    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    border-radius: var(--r-sm); padding: 6px 10px; font-family: var(--font-sans); font-size: 0.8rem;
+    transition: border-color .2s ease;
+  }
+  .roast-date-input:focus { outline: none; border-color: var(--accent); }
+  .freshness-tip {
+    font-size: 0.82rem; color: var(--ink-soft); margin: -6px 0 18px; line-height: 1.5;
+    border-left: 3px solid var(--accent); padding: 2px 0 2px 14px;
+  }
 
   /* ---------- Method selector ---------- */
   .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
@@ -137,11 +148,19 @@
   }
 
   .grind-scale { margin: 4px 0 18px; }
-  .grind-scale-label { font-size: 0.68rem; color: var(--ink-faint); margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
-  .grind-dots { display: flex; align-items: flex-end; gap: 8px; height: 22px; }
-  .grind-dot { border-radius: 50%; background: var(--line); display: inline-block; transition: background .2s ease; }
-  .grind-dot.active { background: var(--accent); }
-  .grind-scale-ends { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--ink-faint); margin-top: 8px; }
+  .grind-scale-label { font-size: 0.68rem; color: var(--ink-faint); margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+  .grind-track { position: relative; height: 20px; }
+  .grind-track::before {
+    content: ''; position: absolute; left: 4px; right: 4px; top: 50%; height: 2px;
+    background: var(--line); transform: translateY(-50%);
+  }
+  .grind-dots { position: relative; display: flex; justify-content: space-between; align-items: center; height: 100%; }
+  .grind-dot {
+    width: 9px; height: 9px; border-radius: 50%; background: var(--card); border: 2px solid var(--line);
+    display: inline-block; transition: all .25s cubic-bezier(.2,.8,.2,1); flex-shrink: 0;
+  }
+  .grind-dot.active { width: 17px; height: 17px; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-tint); }
+  .grind-scale-ends { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--ink-faint); margin-top: 10px; }
 
   .toggle-row { display: flex; gap: 8px; margin-bottom: 4px; }
   .toggle {
@@ -221,19 +240,29 @@
 
   .action-row { display: flex; gap: 10px; }
   .timer-btn {
-    flex: 2; padding: 15px; border: none; border-radius: var(--r-md);
+    width: 100%; padding: 15px; border: none; border-radius: var(--r-md);
     background: var(--accent); color: var(--accent-ink);
     font-size: 0.95rem; font-weight: 700; cursor: pointer; font-family: var(--font-sans);
     transition: opacity .2s ease, transform .15s ease;
   }
   .timer-btn:hover { opacity: 0.9; }
   .timer-btn:active { transform: scale(.98); }
+  .action-row-secondary { display: flex; gap: 10px; margin-top: 10px; }
   .share-btn {
     flex: 1; border: 1.5px solid var(--line); background: transparent; color: var(--ink);
-    border-radius: var(--r-md); font-size: 0.88rem; font-weight: 600; cursor: pointer; font-family: var(--font-sans);
+    border-radius: var(--r-md); padding: 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: var(--font-sans);
     transition: border-color .2s ease, background .2s ease;
   }
   .share-btn:hover { border-color: var(--accent); background: var(--accent-tint); }
+
+  /* ---------- Diary stats ---------- */
+  .diary-stats { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .dstat {
+    flex: 1; min-width: 76px; text-align: center; background: var(--paper); border: 1px solid var(--line);
+    border-radius: var(--r-sm); padding: 12px 6px;
+  }
+  .dstat-val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.1rem; color: var(--ink); }
+  .dstat-lab { font-size: 0.62rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .06em; margin-top: 3px; }
 
   /* ---------- Steps ---------- */
   h3.section {
@@ -380,7 +409,12 @@
     <button class="roast-btn" data-r="medium">Media</button>
     <button class="roast-btn" data-r="dark">Scura</button>
   </div>
+  <div class="roast-date-field">
+    <span class="roast-label">Tostato il</span>
+    <input type="date" id="roastDateInput" class="roast-date-input">
+  </div>
 </div>
+<div class="freshness-tip hidden" id="freshnessTip"></div>
 
 <div class="tabs" id="tabs"></div>
 
@@ -395,7 +429,7 @@
   <div class="roast-tip hidden" id="roastTip"></div>
   <div class="grind-scale">
     <div class="grind-scale-label">Macinatura consigliata</div>
-    <div class="grind-dots" id="grindDots"></div>
+    <div class="grind-track"><div class="grind-dots" id="grindDots"></div></div>
     <div class="grind-scale-ends"><span>Fine</span><span>Grossa</span></div>
   </div>
   <div class="toggle-row" id="cbToggle" style="display:none">
@@ -445,7 +479,10 @@
   <div class="result-banner" id="resultBanner"></div>
   <div class="action-row">
     <button class="timer-btn" id="openTimerBtn">Avvia timer guidato</button>
-    <button class="share-btn" id="shareBtn">Condividi</button>
+  </div>
+  <div class="action-row-secondary">
+    <button class="share-btn" id="shareBtn">Condividi link</button>
+    <button class="share-btn" id="shareImageBtn">Condividi immagine</button>
   </div>
 </div>
 
@@ -472,6 +509,7 @@
     <h3>Diario infusioni</h3>
     <button class="diary-add-btn" id="diaryAddBtn">+ Aggiungi</button>
   </div>
+  <div class="diary-stats hidden" id="diaryStats"></div>
   <div class="diary-empty" id="diaryEmpty">Nessuna infusione salvata ancora. Registra la tua prossima tazza per iniziare a tracciare cosa funziona meglio.</div>
   <div class="diary-list" id="diaryList"></div>
 </div>
@@ -769,6 +807,29 @@ document.querySelectorAll('.roast-btn').forEach(b => b.addEventListener('click',
   state.roast = b.dataset.r; save(); render();
 }));
 
+// ===== Data di tostatura e freschezza =====
+if (state.roastDate) $('roastDateInput').value = state.roastDate;
+$('roastDateInput').addEventListener('change', () => {
+  state.roastDate = $('roastDateInput').value || null;
+  save(); renderFreshness();
+});
+function renderFreshness() {
+  const el = $('freshnessTip');
+  if (!state.roastDate) { el.classList.add('hidden'); return; }
+  const roastDate = new Date(state.roastDate + 'T00:00:00');
+  const days = Math.floor((Date.now() - roastDate.getTime()) / 86400000);
+  let msg;
+  if (days < 0) msg = 'La data di tostatura è nel futuro: controlla il valore inserito.';
+  else if (days <= 3) msg = `Tostato ${days === 0 ? 'oggi' : days + ' giorni fa'} — sta ancora degassando: aspetta qualche giorno per risultati migliori.`;
+  else if (days <= 14) msg = `Tostato ${days} giorni fa — nel pieno della finestra di freschezza.`;
+  else if (days <= 21) msg = `Tostato ${days} giorni fa — ancora buono: se l'estrazione risulta debole, prova a macinare un po' più fine.`;
+  else if (days <= 30) msg = `Tostato ${days} giorni fa — in calo: macina più fine e con acqua leggermente più calda per compensare.`;
+  else msg = `Tostato ${days} giorni fa — probabilmente sta perdendo aromaticità: meglio consumarlo presto o macinarlo più fine.`;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+renderFreshness();
+
 function updateRatioVisual(dose, water) {
   const total = dose + water;
   if (!total) return;
@@ -802,7 +863,7 @@ function render() {
 
   // Scala macinatura
   $('grindDots').innerHTML = [1, 2, 3, 4, 5, 6, 7].map(i =>
-    `<span class="grind-dot ${i === m.grind ? 'active' : ''}" style="width:${6 + i * 2}px;height:${6 + i * 2}px;"></span>`
+    `<span class="grind-dot ${i === m.grind ? 'active' : ''}"></span>`
   ).join('');
 
   // Cold brew toggle
@@ -1220,6 +1281,125 @@ $('shareBtn').addEventListener('click', async () => {
   }
 });
 
+// ===== Immagine ricetta condivisibile =====
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function buildRecipeCanvas() {
+  const key = state.method, m = METHODS[key], v = getVals(key);
+  const water = Math.round(v.dose * v.ratio);
+  const W_ = 1080, H_ = 1350, pad = 84;
+  const canvas = document.createElement('canvas');
+  canvas.width = W_; canvas.height = H_;
+  const ctx = canvas.getContext && canvas.getContext('2d');
+  if (!ctx) return null;
+
+  const paper = '#f5f1ea', ink = '#24201b', inkSoft = '#736a5e', inkFaint = '#a89d8d', line = '#e4dccc', accent = '#b5511f';
+
+  ctx.fillStyle = paper; ctx.fillRect(0, 0, W_, H_);
+  ctx.fillStyle = accent; ctx.fillRect(0, 0, W_, 16);
+
+  ctx.fillStyle = inkFaint;
+  ctx.font = '700 26px -apple-system, sans-serif';
+  ctx.fillText('RICETTA CAFFÈ', pad, 110);
+
+  ctx.fillStyle = ink;
+  ctx.font = '500 80px Georgia, "Times New Roman", serif';
+  ctx.fillText(m.name, pad, 210);
+
+  ctx.fillStyle = inkSoft;
+  ctx.font = '500 32px -apple-system, sans-serif';
+  ctx.fillText(m.type, pad, 254);
+
+  ctx.strokeStyle = line; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(pad, 300); ctx.lineTo(W_ - pad, 300); ctx.stroke();
+
+  const colW = (W_ - pad * 2) / 3;
+  function stat(i, label, value, color) {
+    const x = pad + i * colW;
+    ctx.fillStyle = color;
+    ctx.font = '700 88px ui-monospace, Menlo, "Roboto Mono", monospace';
+    ctx.fillText(value, x, 470);
+    ctx.fillStyle = inkFaint;
+    ctx.font = '700 24px -apple-system, sans-serif';
+    ctx.fillText(label.toUpperCase(), x, 508);
+  }
+  stat(0, 'Caffè', fmt(v.dose) + 'g', ink);
+  stat(1, 'Acqua', water + 'g', ink);
+  stat(2, 'Rapporto', '1:' + v.ratio, accent);
+
+  const barY = 570, barH = 28, barW = W_ - pad * 2;
+  const cPct = v.dose / (v.dose + water);
+  roundRectPath(ctx, pad, barY, barW, barH, barH / 2);
+  ctx.fillStyle = line; ctx.fill();
+  roundRectPath(ctx, pad, barY, Math.max(barH, barW * cPct), barH, barH / 2);
+  ctx.fillStyle = accent; ctx.fill();
+
+  ctx.fillStyle = inkSoft;
+  ctx.font = '500 26px -apple-system, sans-serif';
+  ctx.fillText(`${(cPct * 100).toFixed(1)}% caffè · ${(100 - cPct * 100).toFixed(1)}% acqua`, pad, 642);
+
+  let y = 722;
+  Object.entries(m.specs).forEach(([k2, val]) => {
+    ctx.fillStyle = inkFaint;
+    ctx.font = '700 24px -apple-system, sans-serif';
+    ctx.fillText(k2.toUpperCase(), pad, y);
+    ctx.fillStyle = ink;
+    ctx.font = '500 32px -apple-system, sans-serif';
+    ctx.fillText(val2(k2, val), pad, y + 38);
+    y += 92;
+  });
+
+  ctx.fillStyle = inkFaint;
+  ctx.font = '700 24px -apple-system, sans-serif';
+  const roastLabel = { light: 'Chiara', medium: 'Media', dark: 'Scura' }[state.roast || 'medium'];
+  ctx.fillText('TOSTATURA · MACINATURA CONSIGLIATA', pad, y + 10);
+  ctx.fillStyle = ink;
+  ctx.font = '500 32px -apple-system, sans-serif';
+  ctx.fillText(`${roastLabel} · livello ${m.grind} di 7`, pad, y + 48);
+
+  ctx.strokeStyle = line; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(pad, H_ - 110); ctx.lineTo(W_ - pad, H_ - 110); ctx.stroke();
+  ctx.fillStyle = inkFaint;
+  ctx.font = '500 26px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Calcolatore Infusioni Caffè', W_ / 2, H_ - 60);
+  ctx.textAlign = 'left';
+
+  return canvas;
+}
+function shareRecipeImage() {
+  const canvas = buildRecipeCanvas();
+  if (!canvas || !canvas.toBlob) { showToast('Generazione immagine non supportata su questo browser.'); return; }
+  canvas.toBlob(async (blob) => {
+    if (!blob) { showToast("Impossibile generare l'immagine."); return; }
+    const key = state.method, m = METHODS[key];
+    const fileName = `ricetta-${key}.png`;
+    try {
+      const file = new File([blob], fileName, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'Ricetta caffè', text: `${m.name} — la mia ricetta` });
+          return;
+        } catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+    } catch (e) {}
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    showToast('Immagine scaricata!');
+  }, 'image/png');
+}
+$('shareImageBtn').addEventListener('click', shareRecipeImage);
+
 // ===== Diario infusioni =====
 const LS_DIARY_KEY = 'coffee-brew-diary-v1';
 let pendingDiary = null, pendingRating = 0;
@@ -1232,9 +1412,38 @@ function loadDiary() {
 }
 function saveDiary(arr) { try { localStorage.setItem(LS_DIARY_KEY, JSON.stringify(arr.slice(0, 100))); } catch (e) {} }
 
+function dayKey(d) { return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+function computeStreak(diary) {
+  const days = new Set(diary.map(e => dayKey(new Date(e.date))));
+  let cursor = new Date();
+  if (!days.has(dayKey(cursor))) {
+    cursor.setDate(cursor.getDate() - 1);
+    if (!days.has(dayKey(cursor))) return 0;
+  }
+  let streak = 0;
+  while (days.has(dayKey(cursor))) { streak++; cursor.setDate(cursor.getDate() - 1); }
+  return streak;
+}
+function renderDiaryStats(diary) {
+  const el = $('diaryStats');
+  if (!diary.length) { el.classList.add('hidden'); return; }
+  const rated = diary.filter(e => e.rating > 0);
+  const avg = rated.length ? (rated.reduce((s, e) => s + e.rating, 0) / rated.length) : 0;
+  const counts = {};
+  diary.forEach(e => { counts[e.methodName] = (counts[e.methodName] || 0) + 1; });
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+  const streak = computeStreak(diary);
+  el.innerHTML = `
+    <div class="dstat"><div class="dstat-val">${diary.length}</div><div class="dstat-lab">Infusioni</div></div>
+    <div class="dstat"><div class="dstat-val">${avg ? avg.toFixed(1) + '★' : '—'}</div><div class="dstat-lab">Media</div></div>
+    <div class="dstat"><div class="dstat-val">${escapeHtml(top)}</div><div class="dstat-lab">Preferito</div></div>
+    <div class="dstat"><div class="dstat-val">${streak}g</div><div class="dstat-lab">Streak</div></div>`;
+  el.classList.remove('hidden');
+}
 function renderDiary() {
   const diary = loadDiary();
   $('diaryEmpty').classList.toggle('hidden', diary.length > 0);
+  renderDiaryStats(diary);
   $('diaryList').innerHTML = diary.map(e => {
     const date = new Date(e.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     const stars = e.rating ? `<div class="diary-stars-display">${'★'.repeat(e.rating)}${'☆'.repeat(5 - e.rating)}</div>` : '';
