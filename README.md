@@ -1,4 +1,8 @@
-# ☕ Calcolatore Infusioni Caffè
+<p align="center">
+  <img src="logo.png" alt="Coffee Calc" width="180">
+</p>
+
+<h1 align="center">Calcolatore Infusioni Caffè</h1>
 
 Web app (PWA) per calcolare dosi, acqua e rapporti di estrazione per sei metodi di infusione: **Hario V60, AeroPress, Kalita 101, Hario Switch, moka e cold brew**.
 
