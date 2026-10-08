@@ -7,10 +7,10 @@ import { render } from './render.js';
 import { timer } from './timer.js';
 import { showToast } from './share.js';
 import { gToOz, isOz, massShort, ozToG } from './units.js';
+import { diaryBackend, getDiary, onDiaryStoreError, openDiaryStore, setDiary } from './diary-store.js';
 import { EY_TARGET, TDS_RANGE, entryExtraction, estimateOut, extractionYield, eyVerdict } from './extraction.js';
 
 // ===== Diario infusioni =====
-export const LS_DIARY_KEY = 'coffee-brew-diary-v1';
 let pendingDiary = null, pendingRating = 0;
 export let compareMode = false, compareSelected = [];
 let diaryFilter = null, editingDiaryId = null;
@@ -45,17 +45,14 @@ export function sanitizeEntry(raw) {
   if (typeof raw.recipeTag === 'string') e.recipeTag = raw.recipeTag.slice(0, 40);
   return e;
 }
-export function loadDiary() {
-  try { const a = JSON.parse(localStorage.getItem(LS_DIARY_KEY)); return Array.isArray(a) ? a.map(sanitizeEntry).filter(Boolean) : []; } catch (e) { return []; }
-}
-// Il diario conserva le DIARY_LIMIT voci più recenti (l'array è ordinato dalla più nuova).
-// Restituisce quante voci sono state scartate, così il chiamante può avvisare l'utente.
-export const DIARY_LIMIT = 100;
-export const DIARY_WARN_AT = 90;
-function saveDiary(arr) {
-  try { localStorage.setItem(LS_DIARY_KEY, JSON.stringify(arr.slice(0, DIARY_LIMIT))); } catch (e) {}
-  return Math.max(0, arr.length - DIARY_LIMIT);
-}
+// Il diario vive in IndexedDB (vedi diary-store.js): qui si lavora su una copia in memoria, dalla voce più recente.
+export function startDiary() { return openDiaryStore(sanitizeEntry); }
+export function loadDiary() { return getDiary(); }
+function saveDiary(arr) { setDiary(arr); }
+
+// Quante voci mostrare alla volta nell'elenco (le altre con "Mostra altre")
+const DIARY_PAGE = 50;
+let diaryVisible = DIARY_PAGE;
 
 function dayKey(d) { return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
 function computeStreak(diary) {
@@ -91,12 +88,12 @@ export function renderDiary() {
   renderDiaryStats(diary);
   $('diaryCompareBtn').disabled = diary.length < 2 && !compareMode;
 
-  // Avviso quando il diario si avvicina al limite (le voci più vecchie verrebbero eliminate)
-  const note = $('diaryLimitNote');
-  note.classList.toggle('hidden', diary.length < DIARY_WARN_AT);
-  if (diary.length >= DIARY_WARN_AT) {
-    $('diaryLimitText').textContent = t(diary.length >= DIARY_LIMIT ? 'diaryLimitFull' : 'diaryLimitNear')(diary.length, DIARY_LIMIT);
-    $('diaryLimitExport').textContent = t('diaryLimitExportBtn');
+  // Se il browser non permette IndexedDB il diario resta in localStorage, più fragile: lo si dice
+  const limited = diaryBackend() !== 'indexeddb';
+  $('diaryStorageNote').classList.toggle('hidden', !limited);
+  if (limited) {
+    $('diaryStorageText').textContent = t('diaryStorageLimited');
+    $('diaryStorageExport').textContent = t('diaryExportNow');
   }
 
   // Filtro per metodo
@@ -108,7 +105,7 @@ export function renderDiary() {
       methodsPresent.map(k => `<button class="diary-filter-chip ${diaryFilter === k ? 'active' : ''}" data-f="${k}">${METHODS[k].name}</button>`).join('');
     fWrap.classList.remove('hidden');
     fWrap.querySelectorAll('.diary-filter-chip').forEach(b =>
-      b.addEventListener('click', () => { diaryFilter = b.dataset.f || null; renderDiary(); }));
+      b.addEventListener('click', () => { diaryFilter = b.dataset.f || null; diaryVisible = DIARY_PAGE; renderDiary(); }));
   } else {
     fWrap.classList.add('hidden');
     if (compareMode) diaryFilter = null;
@@ -117,7 +114,10 @@ export function renderDiary() {
   const shown = diaryFilter ? diary.filter(e => e.method === diaryFilter) : diary;
   const xIcon = '<svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
   const penIcon = '<svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>';
-  $('diaryList').innerHTML = shown.map(e => {
+  const more = $('diaryMore');
+  more.classList.toggle('hidden', shown.length <= diaryVisible);
+  more.textContent = t('diaryShowMore')(Math.min(DIARY_PAGE, shown.length - diaryVisible));
+  $('diaryList').innerHTML = shown.slice(0, diaryVisible).map(e => {
     const date = new Date(e.date).toLocaleDateString(t('localeCode'), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     const stars = e.rating ? `<div class="diary-stars-display">${'★'.repeat(e.rating)}${'☆'.repeat(5 - e.rating)}</div>` : '';
     const noteClamp = e.note && e.note.length > 90 ? ' clamp' : '';
@@ -309,7 +309,9 @@ export function initDiary() {
   });
   $('diaryTds').addEventListener('input', renderEyPreview);
   $('diaryOut').addEventListener('input', renderEyPreview);
-  $('diaryLimitExport').addEventListener('click', () => $('diaryExportBtn').click());
+  $('diaryStorageExport').addEventListener('click', () => $('diaryExportBtn').click());
+  $('diaryMore').addEventListener('click', () => { diaryVisible += DIARY_PAGE; renderDiary(); });
+  onDiaryStoreError(() => showToast(t('diaryStorageError')));
   $('diaryImportBtn').addEventListener('click', () => $('diaryImportFile').click());
   $('diaryImportFile').addEventListener('change', (e) => {
     const file = e.target.files && e.target.files[0];
@@ -332,7 +334,7 @@ export function initDiary() {
           added++;
         });
         existing.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-        const dropped = saveDiary(existing);
+        saveDiary(existing);
         // Ripristina impostazioni tostatura se presenti nel backup (v2)
         let settingsMsg = '';
         if (data && data.settings && typeof data.settings === 'object') {
@@ -345,7 +347,7 @@ export function initDiary() {
           settingsMsg = t('diarySettingsRestored');
         }
         renderDiary();
-        showToast(t('diaryImported')(added) + (skipped ? t('diaryImportSkipped')(skipped) : '') + (dropped ? t('diaryImportDropped')(dropped, DIARY_LIMIT) : '') + settingsMsg);
+        showToast(t('diaryImported')(added) + (skipped ? t('diaryImportSkipped')(skipped) : '') + settingsMsg);
       } catch (err) {
         showToast(t('diaryImportInvalid'));
       }
@@ -396,10 +398,10 @@ export function initDiary() {
     if (entry.tds == null) delete entry.tds;
     if (entry.out == null) delete entry.out;
     diary.unshift(entry);
-    const dropped = saveDiary(diary);
+    saveDiary(diary);
     renderDiary();
     $('diaryOverlay').classList.remove('show');
-    showToast(dropped ? t('diarySavedDropped')(DIARY_LIMIT) : t('diarySaved'));
+    showToast(t('diarySaved'));
   });
   $('diaryAddBtn').addEventListener('click', () => {
     const key = state.method, m = METHODS[key], v = getVals(key);
