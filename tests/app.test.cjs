@@ -10,12 +10,14 @@ const { chromium } = require('playwright');
 const ROOT = path.join(__dirname, '..');
 const TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.woff2': 'font/woff2' };
 let server, browser, page, base;
+let swSuffix = '';   // accodato a sw.js per simulare una nuova versione del service worker
 
 before(async () => {
   server = http.createServer((req, res) => {
     const f = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/\/$/, '/index.html'));
     if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end(); }
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' });
+    res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+    if (path.basename(f) === 'sw.js') return res.end(fs.readFileSync(f, 'utf8') + swSuffix);
     fs.createReadStream(f).pipe(res);
   });
   await new Promise(r => server.listen(0, r));
@@ -597,4 +599,66 @@ test('TDS/EY: con le once il campo bevanda è in once ma si salva in grammi', as
   const e = (await readDiaryDB(pg))[0];
   assert.ok(Math.abs(e.out - 283.495) < 0.01);
   await pg.close();
+});
+
+test('aggiornamento: la prima installazione non mostra il banner né ricarica; una nuova versione lo mostra e si applica solo al tocco', async () => {
+  swSuffix = '';
+  const ctx = await browser.newContext({ locale: 'it-IT' });
+  const pg = await ctx.newPage();
+  const errs = []; pg.on('pageerror', e => errs.push(e.message));
+  await go(pg);
+  await pg.evaluate(() => { window.__marker = 'prima-versione'; });
+  await pg.evaluate(() => navigator.serviceWorker.ready);
+  await pg.waitForFunction(() => navigator.serviceWorker.controller);   // il SW ha preso il controllo (clients.claim)
+  await pg.waitForTimeout(500);
+  assert.strictEqual(await pg.evaluate(() => window.__marker), 'prima-versione', 'la prima installazione non deve ricaricare la pagina');
+  assert.ok(await pg.evaluate(() => document.getElementById('updateBanner').classList.contains('hidden')));
+
+  // esce una nuova versione di sw.js: resta in attesa e compare il banner, senza ricaricare
+  swSuffix = '\n// nuova versione 1\n';
+  await pg.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
+  await pg.waitForSelector('#updateBanner:not(.hidden)');
+  assert.match(await pg.textContent('#updateBannerText'), /Nuova versione disponibile/);
+  assert.strictEqual(await pg.textContent('#updateBtn'), 'Aggiorna');
+  assert.strictEqual(await pg.evaluate(() => window.__marker), 'prima-versione', 'non si ricarica da sola');
+  assert.ok(await pg.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), 'la nuova versione è in attesa');
+
+  // ricaricando senza toccare il banner, la versione in attesa viene riproposta
+  await reload(pg);
+  await pg.waitForSelector('#updateBanner:not(.hidden)');
+  await pg.evaluate(() => { window.__marker = 'prima-del-tocco'; });
+
+  // il tocco attiva la nuova versione e ricarica la pagina
+  const reloaded = pg.waitForEvent('load');
+  await pg.click('#updateBtn');
+  await reloaded;
+  await pg.waitForSelector('html[data-ready]', { state: 'attached' });
+  assert.strictEqual(await pg.evaluate(() => window.__marker), undefined, 'la pagina è stata ricaricata');
+  const reg = await pg.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); return { waiting: !!r.waiting, active: r.active && r.active.state }; });
+  assert.deepStrictEqual(reg, { waiting: false, active: 'activated' });
+  assert.ok(await pg.evaluate(() => document.getElementById('updateBanner').classList.contains('hidden')));
+  assert.deepStrictEqual(errs, []);
+  swSuffix = '';
+  await ctx.close();
+});
+
+test('aggiornamento: il tocco funziona anche nella prima sessione, senza ricaricare prima', async () => {
+  swSuffix = '';
+  const ctx = await browser.newContext({ locale: 'it-IT' });
+  const pg = await ctx.newPage();
+  await go(pg);
+  await pg.evaluate(() => navigator.serviceWorker.ready);
+  await pg.waitForFunction(() => navigator.serviceWorker.controller);
+  await pg.evaluate(() => { window.__marker = 'sessione-1'; });
+
+  swSuffix = '\n// nuova versione 2\n';
+  await pg.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
+  await pg.waitForSelector('#updateBanner:not(.hidden)');
+  const reloaded = pg.waitForEvent('load', { timeout: 10000 });
+  await pg.click('#updateBtn');
+  await reloaded;
+  await pg.waitForSelector('html[data-ready]', { state: 'attached' });
+  assert.strictEqual(await pg.evaluate(() => window.__marker), undefined, 'la pagina deve ricaricarsi dopo il tocco');
+  swSuffix = '';
+  await ctx.close();
 });
