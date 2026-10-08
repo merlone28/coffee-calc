@@ -1,5 +1,5 @@
 import { ICON, ROAST, fmt, roastNote, val2 } from './core.js';
-import { cToF, isImperial, massForInput, massFromInput } from './units.js';
+import { cToF, isF, isOz, massForInput, massFromInput } from './units.js';
 import { METHODS } from './data/methods.js';
 import { RECIPES, activeRecipe } from './data/recipes.js';
 import { mDesc, mHint, mLang, mPresetLabel, mSpecsOf, mType, stepsFor, t } from './i18n.js';
@@ -155,7 +155,7 @@ export function render() {
 // Limiti e passo dei campi dose/acqua nell'unità corrente (min/step in HTML sono in grammi)
 function setMassInputs() {
   const dose = $('doseInput'), water = $('waterInput');
-  if (isImperial()) {
+  if (isOz()) {
     dose.min = 0.05; dose.step = 0.05;
     water.min = 0.5; water.step = 0.5;
   } else {
@@ -170,7 +170,7 @@ function buildBanner(m, v, water) {
     <div class="rb-item"><div class="rb-val">${water} g</div><div class="rb-lab">${t('rbWater')}</div></div>
     <div class="rb-item rb-hero"><div class="rb-val">1:${v.ratio}</div><div class="rb-lab">${t('rbRatio')}</div></div>`;
   if (m.temp && v.temp != null) {
-    banner += `<div class="rb-item"><div class="rb-val">${isImperial() ? Math.round(cToF(v.temp)) : v.temp}°</div><div class="rb-lab">${t('rbTemp')}</div></div>`;
+    banner += `<div class="rb-item"><div class="rb-val">${isF() ? Math.round(cToF(v.temp)) : v.temp}°</div><div class="rb-lab">${t('rbTemp')}</div></div>`;
   }
   if (m.coldbrew && state.cbMode === 'conc') {
     banner += `<div class="rb-item"><div class="rb-val">~${Math.round(water * 2 * 0.85)} g</div><div class="rb-lab">${t('rbFinalDrink')}</div></div>`;

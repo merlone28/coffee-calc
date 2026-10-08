@@ -106,6 +106,13 @@
     transition: border-color .2s ease, background .2s ease;
   }
   .icon-btn:hover { border-color: var(--accent); }
+  .icon-btn.on { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- Unità di misura ---------- */
+  .units-form { display: flex; flex-direction: column; gap: 18px; width: min(420px, 100%); margin-top: 8px; }
+  .units-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .units-presets { display: flex; gap: 8px; flex-wrap: wrap; }
+  .units-note { text-align: left; color: var(--ink-soft); font-size: 0.8rem; line-height: 1.5; margin: 0; }
 
   /* ---------- Roast selector ---------- */
   .roast-row { display: flex; align-items: center; gap: 10px; margin: 18px 0 0; flex-wrap: wrap; }

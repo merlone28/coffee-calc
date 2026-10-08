@@ -16,7 +16,7 @@ Web app (PWA) per calcolare dosi, acqua e rapporti di estrazione per sei metodi 
 - **Guida alla macinatura**: come leggere i numeri, taratura dello zero, tabella "nel bicchiere → cosa fare" con i click calcolati sul passo del tuo macinino, consigli per tostatura e freschezza
 - **Linee guida sull'acqua** secondo gli standard SCA: TDS, durezza, alcalinità, pH
 - **Diario delle infusioni** con voti, note, confronto, statistiche e backup JSON (esporta/importa). Conserva le ultime 100 voci: da 90 in su compare un avviso con il pulsante di esportazione, e quando una voce viene scartata (nuova infusione o import) l'app lo dice
-- **Unità metriche o imperiali**: il pulsante g/oz in alto passa a once (oz, fl oz) e gradi Fahrenheit; campi, procedure, timer, diario e immagine condivisa si convertono, mentre ricette, diario salvato e link condivisi restano in grammi e °C. La scelta viene ricordata
+- **Unità di misura**: di default grammi, ml e °C. Il pulsante in alto apre le impostazioni: peso (g / oz), volume (ml / fl oz) e temperatura (°C / °F) si cambiano una per una, oppure con i preset "Tutto metrico" / "Tutto imperiale". Campi, procedure, timer, diario e immagine condivisa si convertono; ricette, diario salvato e link condivisi restano in grammi e °C. La scelta viene ricordata
 - **Funziona offline** e salva le tue impostazioni sul dispositivo
 - **Italiano e inglese**: alla prima visita la lingua segue il browser (italiano o inglese, altrimenti inglese); il pulsante IT/EN in alto la cambia e la scelta viene ricordata
 

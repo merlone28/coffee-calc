@@ -19,7 +19,7 @@
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" id="langBtn" title="Language / Lingua" style="font-size:0.72rem;font-weight:700;">IT</button>
-    <button class="icon-btn" id="unitsBtn" title="Unità" style="font-size:0.72rem;font-weight:700;">g</button>
+    <button class="icon-btn" id="unitsBtn" title="Unità di misura"></button>
     <button class="icon-btn" id="notifyBtn" title="Notifiche"></button>
     <button class="icon-btn" id="themeBtn" title="Tema chiaro / scuro"></button>
   </div>
@@ -197,6 +197,21 @@
   <textarea id="diaryNote" class="diary-note" placeholder="Note di gusto (opzionale): troppo acido, amaro, equilibrato..."></textarea>
   <div class="timer-controls">
     <button class="timer-main-btn timer-start-btn" id="diarySaveBtn">Salva</button>
+  </div>
+</div>
+
+<div class="timer-overlay diary-overlay" id="unitsOverlay" role="dialog" aria-labelledby="unitsTitleText">
+  <button class="timer-close" id="unitsClose" data-aria="ariaClose"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  <div class="timer-method" id="unitsTitleText">Unità di misura</div>
+  <div class="units-form">
+    <div class="units-row" data-k="weight"><span class="roast-label units-label"></span><div class="roast-group"></div></div>
+    <div class="units-row" data-k="volume"><span class="roast-label units-label"></span><div class="roast-group"></div></div>
+    <div class="units-row" data-k="temp"><span class="roast-label units-label"></span><div class="roast-group"></div></div>
+    <div class="units-presets">
+      <button type="button" class="diary-action-btn" id="unitsPresetMetric"></button>
+      <button type="button" class="diary-action-btn" id="unitsPresetImperial"></button>
+    </div>
+    <p class="units-note" id="unitsNote"></p>
   </div>
 </div>
 
