@@ -70,6 +70,9 @@
   html { scrollbar-color: var(--ink-faint) transparent; }
   ::selection { background: var(--accent); color: var(--accent-ink); }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  }
   input[type=range]:focus-visible { outline-offset: 6px; }
   #methodEyebrow { display: none; }
 
@@ -573,7 +576,12 @@
   <button class="repeat-banner-btn" id="repeatLastBtn"></button>
 </div>
 
-<div class="tabs" id="tabs"></div>
+<div class="repeat-banner hidden" id="updateBanner" role="status">
+  <div class="repeat-banner-text" id="updateBannerText"></div>
+  <button class="repeat-banner-btn" id="updateBtn"></button>
+</div>
+
+<div class="tabs" id="tabs" role="tablist"></div>
 
 <div class="layout">
 <div class="col-main">
@@ -600,7 +608,7 @@
     </div>
     <div class="roast-date-field">
       <span class="roast-label" id="roastedOnLabel">Tostato il</span>
-      <input type="date" id="roastDateInput" class="roast-date-input">
+      <input type="date" id="roastDateInput" class="roast-date-input" aria-labelledby="roastedOnLabel">
     </div>
   </div>
   <div class="freshness-tip hidden" id="freshnessTip"></div>
@@ -627,11 +635,11 @@
 
   <div class="calc-grid">
     <div class="field">
-      <label id="doseLabel">Caffè (g)</label>
+      <label id="doseLabel" for="doseInput">Caffè (g)</label>
       <input type="number" id="doseInput" min="1" step="0.5" inputmode="decimal">
     </div>
     <div class="field">
-      <label id="waterLabel">Acqua (g / ml)</label>
+      <label id="waterLabel" for="waterInput">Acqua (g / ml)</label>
       <input type="number" id="waterInput" min="10" step="5" inputmode="decimal">
     </div>
   </div>
@@ -641,7 +649,7 @@
       <span id="ratioLabelText">Rapporto caffè : acqua</span>
       <span class="ratio-value" id="ratioVal"></span>
     </div>
-    <input type="range" id="ratioSlider" step="0.5">
+    <input type="range" id="ratioSlider" step="0.5" aria-labelledby="ratioLabelText">
     <div class="ratio-hint" id="ratioHint"></div>
   </div>
 
@@ -650,7 +658,7 @@
       <span id="tempLabelText">Temperatura acqua</span>
       <span class="ratio-value" id="tempVal"></span>
     </div>
-    <input type="range" id="tempSlider" step="1">
+    <input type="range" id="tempSlider" step="1" aria-labelledby="tempLabelText">
     <div class="ratio-hint" id="tempHint"></div>
   </div>
 
@@ -714,10 +722,10 @@
 
 <div class="footer" id="footerText">1 g di acqua ≈ 1 ml · Modifica caffè, acqua o rapporto: gli altri valori si ricalcolano.</div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <div class="timer-overlay diary-overlay" id="diaryOverlay">
-  <button class="timer-close" id="diaryClose"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  <button class="timer-close" id="diaryClose" data-aria="ariaClose"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   <div class="timer-method" id="diaryFormTitle">Registra infusione</div>
   <div class="diary-form-recipe" id="diaryFormRecipe"></div>
   <div class="diary-stars" id="diaryStars">
@@ -734,13 +742,13 @@
 </div>
 
 <div class="timer-overlay diary-overlay" id="compareOverlay">
-  <button class="timer-close" id="compareClose"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  <button class="timer-close" id="compareClose" data-aria="ariaClose"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   <div class="timer-method" id="compareTitle">Confronto ricette</div>
   <div class="compare-grid" id="compareGrid"></div>
 </div>
 
 <div class="timer-overlay" id="timerOverlay">
-  <button class="timer-close" id="timerClose"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  <button class="timer-close" id="timerClose" data-aria="ariaClose"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   <div class="timer-method" id="timerMethodName"></div>
 
   <div class="timer-panel" id="timerGuidedPanel">
@@ -751,7 +759,7 @@
       </svg>
       <div class="timer-time" id="timerTime">0:00</div>
     </div>
-    <div class="timer-step-title" id="timerStepTitle"></div>
+    <div class="timer-step-title" id="timerStepTitle" aria-live="polite"></div>
     <div class="timer-step-detail" id="timerStepDetail"></div>
     <div class="timer-next" id="timerNext"></div>
     <div class="timer-controls">
@@ -766,9 +774,9 @@
     <div class="timer-time" id="timerManualTime" style="position:static;font-size:2.8rem;margin-bottom:18px;">0:00</div>
     <div class="timer-step-title" id="timerManualTitle"></div>
     <div class="timer-manual-nav">
-      <button class="timer-ctrl-btn" id="timerPrevStep"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <button class="timer-ctrl-btn" id="timerPrevStep" data-aria="ariaPrev"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></button>
       <div class="timer-manual-count" id="timerManualCount"></div>
-      <button class="timer-ctrl-btn" id="timerNextStep"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg></button>
+      <button class="timer-ctrl-btn" id="timerNextStep" data-aria="ariaNext"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg></button>
       <button class="timer-ctrl-btn hidden" id="timerSaveDiaryManual" title="Salva nel diario"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></button>
     </div>
   </div>
@@ -1663,6 +1671,8 @@ const STR = {
     compareTitle: 'Confronto ricette', compareSelectToast: "Seleziona un'altra infusione da confrontare (1/2 selezionata).",
     compareNoNote: 'Nessuna nota',
     repeatBannerPrefix: 'Ultima volta:', repeatLastBtn: 'Ripeti',
+    updateAvailable: 'Nuova versione disponibile', updateBtn: 'Aggiorna',
+    ariaClose: 'Chiudi', ariaPrev: 'Step precedente', ariaNext: 'Step successivo', ariaDelete: 'Elimina', ariaStar: 'stelle',
     timerLongformStartBtn: 'Avvia infusione', timerLongformResetBtn: 'Annulla infusione',
     timerDone: 'Fatto!', timerExtractionDone: 'Estrazione completata. Buon caffè!',
     timerNextPrefix: 'Prossimo:', timerNextAt: 'a', timerLastStep: "Ultimo step — attendi la fine dell'estrazione",
@@ -1739,6 +1749,8 @@ const STR = {
     compareTitle: 'Recipe comparison', compareSelectToast: 'Select another brew to compare (1/2 selected).',
     compareNoNote: 'No notes',
     repeatBannerPrefix: 'Last time:', repeatLastBtn: 'Repeat',
+    updateAvailable: 'New version available', updateBtn: 'Update',
+    ariaClose: 'Close', ariaPrev: 'Previous step', ariaNext: 'Next step', ariaDelete: 'Delete', ariaStar: 'stars',
     timerLongformStartBtn: 'Start brew', timerLongformResetBtn: 'Cancel brew',
     timerDone: 'Done!', timerExtractionDone: 'Extraction complete. Enjoy your coffee!',
     timerNextPrefix: 'Next:', timerNextAt: 'at', timerLastStep: 'Last step — wait for extraction to finish',
@@ -1811,8 +1823,19 @@ function mTimerCfg(key, d, w, mode) {
   return base;
 }
 
+// Nomi accessibili: data-aria -> aria-label tradotto; title -> aria-label per i pulsanti solo-icona
+function syncAria() {
+  document.querySelectorAll('[data-aria]').forEach(el => el.setAttribute('aria-label', t(el.dataset.aria)));
+  document.querySelectorAll('#diaryStars button').forEach(b => b.setAttribute('aria-label', b.dataset.v + ' ' + t('ariaStar')));
+  document.querySelectorAll('button[title]').forEach(el => {
+    if (!el.hasAttribute('data-aria') && el.title) el.setAttribute('aria-label', el.title);
+  });
+}
+new MutationObserver(syncAria).observe(document.body, { attributes: true, attributeFilter: ['title'], subtree: true });
+
 function applyLang() {
   document.documentElement.lang = state.lang === 'en' ? 'en' : 'it';
+  syncAria();
   document.title = t('appTitle');
   $('langBtn').textContent = state.lang === 'en' ? 'EN' : 'IT';
   $('langBtn').title = t('langTitle');
@@ -1911,7 +1934,7 @@ const $ = id => document.getElementById(id);
 
 function renderTabs() {
   $('tabs').innerHTML = ORDER.map(k =>
-    `<button class="tab ${k === state.method ? 'active' : ''}" data-m="${k}">${METHODS[k].name}</button>`
+    `<button class="tab ${k === state.method ? 'active' : ''}" data-m="${k}" role="tab" aria-selected="${k === state.method}">${METHODS[k].name}</button>`
   ).join('');
   $('tabs').querySelectorAll('.tab').forEach(b =>
     b.addEventListener('click', () => { state.method = b.dataset.m; save(); render(); })
@@ -2869,8 +2892,33 @@ let diaryFilter = null, editingDiaryId = null;
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+// Normalizza una voce del diario (da localStorage o da un file importato):
+// tiene solo i campi noti, forza i tipi e limita i range. Restituisce null se inutilizzabile.
+function sanitizeEntry(raw) {
+  if (!raw || typeof raw !== 'object' || typeof raw.methodName !== 'string' || !raw.methodName.trim()) return null;
+  const num = (v, min, max) => { const n = Number(v); return Number.isFinite(n) && n >= min && n <= max ? n : null; };
+  const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+  const dose = num(raw.dose, 0.1, 5000), water = num(raw.water, 0.1, 50000), ratio = num(raw.ratio, 0.1, 1000);
+  if (dose == null || water == null || ratio == null) return null;
+  const d = new Date(raw.date);
+  let id = raw.id;
+  if (typeof id === 'string') id = id.replace(/[^\w.-]/g, '').slice(0, 40);
+  if (typeof id !== 'string' && !Number.isFinite(id)) id = null;
+  if (id === '' || id == null) id = Date.now() + Math.random();
+  const e = {
+    id, date: isNaN(d) ? new Date(0).toISOString() : d.toISOString(),
+    methodName: str(raw.methodName, 80), dose, water, ratio,
+    rating: Math.round(num(raw.rating, 0, 5) || 0), note: str(raw.note, 1000)
+  };
+  if (typeof raw.method === 'string' && METHODS[raw.method]) e.method = raw.method;
+  const temp = num(raw.temp, 0, 100); if (temp != null && temp > 0) e.temp = temp;
+  if (raw.cbMode === 'conc' || raw.cbMode === 'rtd') e.cbMode = raw.cbMode;
+  if (typeof raw.recipe === 'string') e.recipe = raw.recipe.replace(/[^\w-]/g, '').slice(0, 40);
+  if (typeof raw.recipeTag === 'string') e.recipeTag = raw.recipeTag.slice(0, 40);
+  return e;
+}
 function loadDiary() {
-  try { const a = JSON.parse(localStorage.getItem(LS_DIARY_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  try { const a = JSON.parse(localStorage.getItem(LS_DIARY_KEY)); return Array.isArray(a) ? a.map(sanitizeEntry).filter(Boolean) : []; } catch (e) { return []; }
 }
 function saveDiary(arr) { try { localStorage.setItem(LS_DIARY_KEY, JSON.stringify(arr.slice(0, 100))); } catch (e) {} }
 
@@ -2934,8 +2982,8 @@ function renderDiary() {
     const temp = e.temp ? ` · ${e.temp} °C` : '';
     const check = compareMode ? `<input type="checkbox" class="diary-compare-check" data-id="${e.id}" ${compareSelected.includes(String(e.id)) ? 'checked' : ''}>` : '';
     const actions = compareMode ? '' :
-      `<button class="diary-edit" data-id="${e.id}" title="${t('diaryEditTitle')}">${penIcon}</button>` +
-      `<button class="diary-del" data-id="${e.id}">${xIcon}</button>`;
+      `<button class="diary-edit" data-id="${e.id}" title="${t('diaryEditTitle')}" aria-label="${t('diaryEditTitle')}">${penIcon}</button>` +
+      `<button class="diary-del" data-id="${e.id}" aria-label="${t('ariaDelete')}">${xIcon}</button>`;
     return `<div class="diary-item">
       <div class="diary-item-top">
         ${check}<span class="diary-item-method">${escapeHtml(e.methodName)}${e.recipeTag ? ' · ' + escapeHtml(e.recipeTag) : ''}</span>
@@ -3056,14 +3104,13 @@ $('diaryImportFile').addEventListener('change', (e) => {
       const existing = loadDiary();
       const existingIds = new Set(existing.map(x => String(x.id)));
       let added = 0, skipped = 0;
-      incoming.forEach(entry => {
-        if (entry && typeof entry === 'object' && entry.methodName) {
-          if (entry.id && existingIds.has(String(entry.id))) { skipped++; return; }
-          if (!entry.id) entry.id = Date.now() + Math.random();
-          existing.push(entry);
-          existingIds.add(String(entry.id));
-          added++;
-        }
+      incoming.forEach(raw => {
+        const entry = sanitizeEntry(raw);
+        if (!entry) return;
+        if (raw.id && existingIds.has(String(entry.id))) { skipped++; return; }
+        existing.push(entry);
+        existingIds.add(String(entry.id));
+        added++;
       });
       existing.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
       saveDiary(existing);
@@ -3171,7 +3218,27 @@ applyLang();
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    navigator.serviceWorker.register("./sw.js").then(reg => {
+      const offer = sw => {
+        $('updateBannerText').textContent = t('updateAvailable');
+        $('updateBtn').textContent = t('updateBtn');
+        $('updateBanner').classList.remove('hidden');
+        $('updateBtn').onclick = () => sw.postMessage('SKIP_WAITING');
+      };
+      if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) offer(nw);
+        });
+      });
+      reg.update().catch(() => {});
+    }).catch(() => {});
+    let reloaded = false;
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloaded) return; reloaded = true; window.location.reload();
+    });
   });
 }
 </script>

@@ -1,0 +1,12 @@
+{
+  "name": "coffee-calc",
+  "private": true,
+  "description": "Calcolatore Infusioni Caffè (PWA)",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --test \"tests/*.test.cjs\""
+  },
+  "devDependencies": {
+    "playwright": "^1.40.0"
+  }
+}

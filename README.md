@@ -30,6 +30,16 @@ L'app si apre a schermo intero con la propria icona, anche senza connessione.
 
 Un singolo file HTML senza dipendenze esterne (font Chakra Petch e JetBrains Mono inclusi in `fonts/`, licenza OFL), stile visivo "Impeccable" con tema chiaro e scuro, con manifest e service worker per l'installazione e l'uso offline. Nessun dato lascia il dispositivo: le impostazioni sono salvate in `localStorage`.
 
+## Sviluppo
+
+```bash
+npm start                 # server locale su http://localhost:8000
+npm install && npx playwright install chromium
+npm test                  # test di calcoli, macinini, import diario e accessibilità
+```
+
+Quando modifichi `index.html` o gli asset, incrementa `CACHE` in `sw.js`: gli utenti vedranno il banner "Nuova versione disponibile".
+
 ## Licenza
 
 Uso libero. Buon caffè! ☕
