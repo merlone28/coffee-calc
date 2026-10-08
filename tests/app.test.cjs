@@ -29,7 +29,7 @@ before(async () => {
   await page.addInitScript(() => {
     window.__mods = async () => Object.assign({},
       await import('/js/core.js'), await import('/js/data/methods.js'), await import('/js/i18n.js'),
-      await import('/js/app.js'), await import('/js/grinder.js'), await import('/js/diary.js'), await import('/js/units.js'));
+      await import('/js/app.js'), await import('/js/grinder.js'), await import('/js/diary.js'), await import('/js/units.js'), await import('/js/extraction.js'));
   });
   page.errors = [];
   page.on('pageerror', e => page.errors.push(e.message));
@@ -434,5 +434,105 @@ test('unità: di default grammi e °C; le impostazioni si cambiano una per una',
   assert.strictEqual(await pg.inputValue('#doseInput'), '20');
   assert.match(await pg.textContent('#tempVal'), /°C/);
   assert.deepStrictEqual(errs, []);
+  await pg.close();
+});
+
+test('TDS/EY: formule, stima della bevanda e giudizio', async () => {
+  const r = await page.evaluate(async () => {
+    const { extractionYield, estimateOut, eyVerdict, entryExtraction, sanitizeEntry } = await window.__mods();
+    const base = { methodName: 'V60', dose: 20, water: 300, ratio: 15 };
+    return {
+      ey: extractionYield(1.4, 20, 280),
+      est: estimateOut(300, 20),
+      bad: [extractionYield(0, 20, 280), extractionYield(1.4, 0, 280), extractionYield(1.4, 20, 0)],
+      verdicts: [eyVerdict(17.99), eyVerdict(18), eyVerdict(22), eyVerdict(22.01)],
+      weighed: entryExtraction({ ...base, tds: 1.4, out: 280 }),
+      estimated: entryExtraction({ ...base, tds: 1.4 }),
+      none: entryExtraction({ ...base }),
+      kept: sanitizeEntry({ ...base, tds: 1.38, out: 285 }),
+      dropped: [sanitizeEntry({ ...base, tds: -1 }).tds, sanitizeEntry({ ...base, tds: 99 }).tds, sanitizeEntry({ ...base, tds: 'x', out: 0 }).out]
+    };
+  });
+  assert.ok(Math.abs(r.ey - 19.6) < 1e-9);
+  assert.strictEqual(r.est, 260);
+  assert.deepStrictEqual(r.bad, [null, null, null]);
+  assert.deepStrictEqual(r.verdicts, ['under', 'ok', 'ok', 'over']);
+  assert.strictEqual(r.weighed.estimated, false);
+  assert.strictEqual(r.weighed.verdict, 'ok');
+  assert.strictEqual(r.estimated.estimated, true);
+  assert.ok(Math.abs(r.estimated.ey - 18.2) < 1e-9);
+  assert.strictEqual(r.none, null);
+  assert.deepStrictEqual([r.kept.tds, r.kept.out], [1.38, 285]);
+  assert.deepStrictEqual(r.dropped, [undefined, undefined, undefined]);
+});
+
+test('TDS/EY: modulo del diario, elenco, modifica e confronto', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  const errs = []; pg.on('pageerror', e => errs.push(e.message));
+  await pg.goto(base);
+  const preview = () => pg.evaluate(() => { const b = document.getElementById('diaryEyPreview'); return b.classList.contains('hidden') ? '' : b.textContent; });
+
+  // senza TDS: nessuna anteprima, la voce si salva come prima
+  await pg.click('#diaryAddBtn');
+  assert.strictEqual(await preview(), '');
+  await pg.click('#diarySaveBtn');
+  let stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1')));
+  assert.strictEqual(stored[0].tds, undefined);
+  assert.strictEqual(await pg.locator('.diary-item-ey').count(), 0);
+
+  // TDS + bevanda pesata: 1,38 % × 285 g / 20 g = 19,7 %
+  await pg.click('#diaryAddBtn');
+  await pg.fill('#diaryTds', '1.38');
+  await pg.fill('#diaryOut', '285');
+  assert.match(await preview(), /EY 19,7 % · nel target \(target SCA 18–22 %\)/);
+  await pg.click('#diarySaveBtn');
+  stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1')));
+  assert.deepStrictEqual([stored[0].tds, stored[0].out], [1.38, 285]);
+  assert.match(await pg.textContent('#diaryList .diary-item-ey'), /TDS 1,38 % · EY 19,7 % · nel target/);
+
+  // solo TDS: bevanda stimata (300 − 2×20 = 260 g) e consiglio se sotto-estratto
+  await pg.click('#diaryAddBtn');
+  await pg.fill('#diaryTds', '1.1');
+  const est = await preview();
+  assert.match(est, /EY ~14,3 % · sotto-estratto/);
+  assert.match(est, /più fine/);
+  assert.match(est, /stimata/);
+  await pg.click('#diarySaveBtn');
+  assert.match(await pg.locator('#diaryList .diary-item-ey').first().textContent(), /EY ~14,3 %/);
+
+  // modifica di una voce esistente: aggiunge il TDS dopo
+  await pg.locator('#diaryList .diary-edit').last().click();
+  assert.strictEqual(await pg.inputValue('#diaryTds'), '');
+  await pg.fill('#diaryTds', '1.6');
+  await pg.fill('#diaryOut', '280');
+  assert.match(await preview(), /EY 22,4 % · sovra-estratto/);
+  await pg.click('#diarySaveBtn');
+  stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1')));
+  assert.ok(stored.some(e => e.tds === 1.6 && e.out === 280));
+
+  // confronto: mostra TDS ed EY
+  await pg.click('#diaryCompareBtn');
+  await pg.locator('.diary-compare-check').nth(0).click();
+  await pg.locator('.diary-compare-check').nth(1).click();
+  await pg.waitForSelector('#compareOverlay.show');
+  const cmp = await pg.textContent('#compareGrid');
+  assert.match(cmp, /TDS/);
+  assert.match(cmp, /EY/);
+  assert.deepStrictEqual(errs, []);
+  await pg.close();
+});
+
+test('TDS/EY: con le once il campo bevanda è in once ma si salva in grammi', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  await pg.goto(base);
+  await setUnits(pg, { weight: 'oz' });
+  await pg.click('#diaryAddBtn');
+  assert.match(await pg.textContent('#diaryOutLabel'), /\(oz\)/);
+  await pg.fill('#diaryTds', '1.38');
+  await pg.fill('#diaryOut', '10');          // 10 oz = 283,5 g
+  assert.match(await pg.textContent('#diaryEyPreview'), /EY 19,6 %/);
+  await pg.click('#diarySaveBtn');
+  const e = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1'))[0]);
+  assert.ok(Math.abs(e.out - 283.495) < 0.01);
   await pg.close();
 });

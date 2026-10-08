@@ -6,7 +6,8 @@ import { $, getVals, renderFreshness, save, state } from './app.js';
 import { render } from './render.js';
 import { timer } from './timer.js';
 import { showToast } from './share.js';
-import { massShort } from './units.js';
+import { gToOz, isOz, massShort, ozToG } from './units.js';
+import { EY_TARGET, TDS_RANGE, entryExtraction, estimateOut, extractionYield, eyVerdict } from './extraction.js';
 
 // ===== Diario infusioni =====
 export const LS_DIARY_KEY = 'coffee-brew-diary-v1';
@@ -37,6 +38,8 @@ export function sanitizeEntry(raw) {
   };
   if (typeof raw.method === 'string' && METHODS[raw.method]) e.method = raw.method;
   const temp = num(raw.temp, 0, 100); if (temp != null && temp > 0) e.temp = temp;
+  const tds = num(raw.tds, TDS_RANGE.min, TDS_RANGE.max); if (tds != null) e.tds = tds;
+  const out = num(raw.out, 1, 50000); if (out != null) e.out = out;
   if (raw.cbMode === 'conc' || raw.cbMode === 'rtd') e.cbMode = raw.cbMode;
   if (typeof raw.recipe === 'string') e.recipe = raw.recipe.replace(/[^\w-]/g, '').slice(0, 40);
   if (typeof raw.recipeTag === 'string') e.recipeTag = raw.recipeTag.slice(0, 40);
@@ -131,7 +134,7 @@ export function renderDiary() {
         ${actions}
       </div>
       <div class="diary-item-recipe">${fmt(e.dose)} g → ${fmt(e.water)} g · 1:${e.ratio}${temp}</div>
-      ${stars}${note}
+      ${eyLine(e)}${stars}${note}
     </div>`;
   }).join('');
 
@@ -178,6 +181,7 @@ function onCompareCheck(e) {
   }
 }
 function compareColHtml(e) {
+  const ex = entryExtraction(e);
   const date = new Date(e.date).toLocaleDateString(t('localeCode'), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const stars = e.rating ? `<div class="compare-stars">${'★'.repeat(e.rating)}${'☆'.repeat(5 - e.rating)}</div>` : `<div class="compare-stars">—</div>`;
   return `<div class="compare-col">
@@ -187,6 +191,8 @@ function compareColHtml(e) {
     <div class="compare-row"><span>${t('rbWater')}</span><b>${fmt(e.water)} g</b></div>
     <div class="compare-row"><span>${t('rbRatio')}</span><b>1:${e.ratio}</b></div>
     <div class="compare-row"><span>${t('rbTemp')}</span><b>${e.temp ? e.temp + ' °C' : '—'}</b></div>
+    <div class="compare-row"><span>TDS</span><b>${ex ? fmtPct(ex.tds, 2) : '—'}</b></div>
+    <div class="compare-row"><span>EY</span><b>${ex ? eyValue(ex) + ' · ' + t('ey_' + ex.verdict) : '—'}</b></div>
     <div class="compare-row"><span>${t('dstatAvg')}</span>${stars}</div>
     <div class="compare-note">${e.note ? '"' + escapeHtml(e.note) + '"' : t('compareNoNote')}</div>
   </div>`;
@@ -214,6 +220,45 @@ function renderRepeatBanner() {
   wrap.classList.remove('hidden');
 }
 
+// ----- TDS / EY -----
+const fmtPct = (x, d) => x.toLocaleString(t('localeCode'), { minimumFractionDigits: d, maximumFractionDigits: d }) + ' %';
+const eyValue = ex => (ex.estimated ? '~' : '') + fmtPct(ex.ey, 1);
+function eyLine(e) {
+  const ex = entryExtraction(e);
+  if (!ex) return '';
+  return `<div class="diary-item-ey ey-${ex.verdict}">TDS ${fmtPct(ex.tds, 2)} · EY ${eyValue(ex)} · ${t('ey_' + ex.verdict)}</div>`;
+}
+const parseNum = s => { const n = parseFloat(String(s).replace(',', '.')); return Number.isFinite(n) ? n : null; };
+// Campo "bevanda ottenuta" nell'unità corrente (g con 1 decimale, oppure oz)
+const outToInput = g => (isOz() ? Math.round(gToOz(g) * 100) / 100 : Math.round(g * 10) / 10);
+const outFromInput = x => (isOz() ? ozToG(x) : x);
+
+// Legge TDS e bevanda dal modulo (in grammi); i valori vuoti o fuori range restano undefined
+function readExtractionFields() {
+  const tds = parseNum($('diaryTds').value);
+  const out = parseNum($('diaryOut').value);
+  const outG = out != null ? outFromInput(out) : null;
+  return {
+    tds: tds != null && tds >= TDS_RANGE.min && tds <= TDS_RANGE.max ? tds : undefined,
+    out: outG != null && outG >= 1 && outG <= 50000 ? outG : undefined
+  };
+}
+function renderEyPreview() {
+  const box = $('diaryEyPreview');
+  const base = pendingDiary;
+  const { tds, out } = readExtractionFields();
+  const est = estimateOut(base.water, base.dose);
+  $('diaryOut').placeholder = '~' + outToInput(est);
+  const ey = tds != null ? extractionYield(tds, base.dose, out != null ? out : est) : null;
+  if (ey == null) { box.classList.add('hidden'); box.textContent = ''; return; }
+  const verdict = eyVerdict(ey);
+  const tip = verdict === 'under' ? t('eyTipUnder') : verdict === 'over' ? t('eyTipOver') : '';
+  const nonFilter = base.method === 'moka' || base.method === 'coldbrew';
+  box.className = 'diary-ey-preview ey-' + verdict;
+  box.textContent = `EY ${(out == null ? '~' : '') + fmtPct(ey, 1)} · ${t('ey_' + verdict)} (${t('eyTarget')(EY_TARGET.lo, EY_TARGET.hi)}).` +
+    (out == null ? ` ${t('eyEstimated')}` : '') + (tip ? ` ${tip}` : '') + (nonFilter ? ` ${t('eyNonFilter')}` : '');
+}
+
 function openDiaryForm(prefill, isEdit) {
   pendingDiary = prefill;
   editingDiaryId = isEdit ? prefill.id : null;
@@ -223,6 +268,12 @@ function openDiaryForm(prefill, isEdit) {
   $('diaryFormRecipe').textContent = `${prefill.methodName} — ${massShort(prefill.dose, fmt)} : ${massShort(prefill.water, fmt)} (1:${prefill.ratio})${temp}`;
   $('diaryStars').querySelectorAll('button').forEach(b => b.classList.toggle('filled', parseInt(b.dataset.v, 10) <= pendingRating));
   $('diaryNote').value = isEdit ? (prefill.note || '') : '';
+  $('diaryTdsLabel').textContent = t('tdsLabel');
+  $('diaryOutLabel').textContent = t('outLabel');
+  $('diaryTds').value = isEdit && prefill.tds ? String(prefill.tds) : '';
+  $('diaryOut').value = isEdit && prefill.out ? String(outToInput(prefill.out)) : '';
+  $('diaryOut').step = isOz() ? '0.05' : '1';
+  renderEyPreview();
   $('diaryOverlay').classList.add('show');
 }
 
@@ -256,6 +307,8 @@ export function initDiary() {
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     showToast(t('diaryExported'));
   });
+  $('diaryTds').addEventListener('input', renderEyPreview);
+  $('diaryOut').addEventListener('input', renderEyPreview);
   $('diaryLimitExport').addEventListener('click', () => $('diaryExportBtn').click());
   $('diaryImportBtn').addEventListener('click', () => $('diaryImportFile').click());
   $('diaryImportFile').addEventListener('change', (e) => {
@@ -328,6 +381,9 @@ export function initDiary() {
       if (i >= 0) {
         diary[i].rating = pendingRating;
         diary[i].note = $('diaryNote').value.trim();
+      const ex = readExtractionFields();
+      if (ex.tds != null) diary[i].tds = ex.tds; else delete diary[i].tds;
+      if (ex.out != null) diary[i].out = ex.out; else delete diary[i].out;
       }
       saveDiary(diary);
       renderDiary();
@@ -336,7 +392,9 @@ export function initDiary() {
       editingDiaryId = null;
       return;
     }
-    const entry = Object.assign({ id: Date.now(), date: new Date().toISOString(), rating: pendingRating, note: $('diaryNote').value.trim() }, pendingDiary);
+    const entry = Object.assign({ id: Date.now(), date: new Date().toISOString(), rating: pendingRating, note: $('diaryNote').value.trim() }, pendingDiary, readExtractionFields());
+    if (entry.tds == null) delete entry.tds;
+    if (entry.out == null) delete entry.out;
     diary.unshift(entry);
     const dropped = saveDiary(diary);
     renderDiary();
