@@ -5,30 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Calcolatore Infusioni Caffè</title>
 <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#b5511f">
+<meta name="theme-color" content="#ae4d1b">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
 <style>
+  @font-face { font-family: "Chakra Petch"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/chakra-petch-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Chakra Petch"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/chakra-petch-latin-500-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Chakra Petch"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/chakra-petch-latin-600-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Chakra Petch"; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/chakra-petch-latin-700-normal.woff2") format("woff2"); }
+  @font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 800; font-display: swap; src: url("fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2"); }
+
+  /* Stile Impeccable (awesome-design-skills): taglio da poster, crema e arancio bruciato, spigoli netti.
+     Colori originali dell'app. Raggi: 8 card/bottoni/riquadri, 4 chip e campi. Spaziatura 4/8/12/16/24/32. */
   :root {
     color-scheme: light;
     --bg: #f5f1ea;
     --paper: #fbf8f3;
     --card: #fffdfa;
     --ink: #24201b;
-    --ink-soft: #736a5e;
-    --ink-faint: #8d8271;
+    --ink-soft: #655c50;
+    --ink-faint: #6f6556;
     --line: #e4dccc;
-    --accent: #b5511f;
+    --accent: #ae4d1b;
     --accent-ink: #ffffff;
-    --accent-tint: rgba(181, 81, 31, 0.08);
-    --gold: #b5511f;
-    --font-serif: "Iowan Old Style", "Palatino Linotype", Georgia, "Times New Roman", serif;
-    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, "Liberation Mono", monospace;
-    --font-sans: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    --r-lg: 24px;
-    --r-md: 16px;
-    --r-sm: 12px;
-    --shadow: 0 1px 2px rgba(36, 32, 27, 0.04), 0 6px 20px rgba(36, 32, 27, 0.05);
+    --accent-tint: rgba(174, 77, 27, 0.08);
+    --gold: #ae4d1b;
+    --success: #2f7a45;
+    --warning: #9a5b0f;
+    --danger: #b3261e;
+    --panel: #ae4d1b;
+    --panel-ink: #ffffff;
+    --panel-accent: #ffffff;
+    --font-display: "Chakra Petch", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --font-sans: "Chakra Petch", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    --r-lg: 8px;
+    --r-md: 8px;
+    --r-sm: 4px;
+    --shadow: none;
   }
   html[data-theme="dark"] {
     color-scheme: dark;
@@ -37,18 +51,27 @@
     --card: #211d17;
     --ink: #f1ebe0;
     --ink-soft: #b3a794;
-    --ink-faint: #8f8469;
+    --ink-faint: #9a8f78;
     --line: #342e24;
     --accent: #d97a45;
     --accent-ink: #1a140d;
     --accent-tint: rgba(217, 122, 69, 0.12);
     --gold: #d97a45;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3);
+    --success: #5fbf7a;
+    --warning: #e0a458;
+    --danger: #f08a80;
+    --panel: #d97a45;
+    --panel-ink: #1a140d;
+    --panel-accent: #1a140d;
+    --shadow: none;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scrollbar-color: var(--ink-faint) transparent; }
   ::selection { background: var(--accent); color: var(--accent-ink); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  input[type=range]:focus-visible { outline-offset: 6px; }
+  #methodEyebrow { display: none; }
 
   body {
     font-family: var(--font-sans);
@@ -78,15 +101,15 @@
   .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 6px; }
   .brand { display: flex; flex-direction: column; }
   h1 {
-    font-family: var(--font-serif); font-size: 1.6rem; font-weight: 500;
-    color: var(--ink); letter-spacing: -0.01em;
+    font-family: var(--font-display); font-size: 2rem; font-weight: 700;
+    color: var(--ink); letter-spacing: -0.01em; line-height: 1.1;
   }
   .subtitle { color: var(--ink-soft); font-size: 0.84rem; margin-top: 4px; line-height: 1.45; max-width: 46ch; }
 
   .topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
   .icon-btn {
     border: 1px solid var(--line); background: var(--card); color: var(--ink);
-    border-radius: 50%; width: 44px; height: 44px; cursor: pointer; font-size: 1rem;
+    border-radius: var(--r-md); width: 44px; height: 44px; cursor: pointer; font-size: 1rem;
     display: inline-flex; align-items: center; justify-content: center;
     transition: border-color .2s ease, background .2s ease;
   }
@@ -95,7 +118,7 @@
   /* ---------- Roast selector ---------- */
   .roast-row { display: flex; align-items: center; gap: 10px; margin: 18px 0 0; flex-wrap: wrap; }
   .roast-label {
-    font-size: 0.72rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .1em; font-weight: 600;
+    font-size: 0.8rem; color: var(--ink-soft); font-weight: 600;
   }
   .roast-group { display: flex; border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; }
   .roast-btn {
@@ -118,7 +141,7 @@
   }
   .fresh-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
   .fresh-day { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink); font-size: 0.85rem; }
-  .fresh-phase { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .fresh-phase { font-size: 0.78rem; font-weight: 600; }
   .fresh-bar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; margin-bottom: 8px; }
   .fresh-bar-fill { height: 100%; border-radius: 999px; transition: width .4s ease; }
   .fresh-msg { font-size: 0.8rem; color: var(--ink-soft); }
@@ -135,41 +158,37 @@
   .tabs::-webkit-scrollbar { display: none; }
   .tab {
     border: 1px solid var(--line); background: var(--card); color: var(--ink-soft);
-    padding: 10px 16px; border-radius: var(--r-sm); cursor: pointer; font-size: 0.85rem; font-weight: 600;
+    padding: 10px 18px; border-radius: var(--r-sm); cursor: pointer; font-size: 0.85rem; font-weight: 500;
     font-family: var(--font-sans); transition: border-color .2s ease, background .2s ease, color .2s ease, transform .15s ease;
     display: inline-flex; align-items: center; gap: 7px;
     white-space: nowrap; flex-shrink: 0; scroll-snap-align: start; min-height: 44px;
   }
-  .tab-ico { font-size: 1rem; line-height: 1; }
   .tab:hover { border-color: var(--accent); color: var(--ink); }
   .tab.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
   /* ---------- Cards ---------- */
   .card {
     background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
-    padding: 26px 24px; margin-bottom: 18px; box-shadow: var(--shadow);
-    animation: cardIn .3s ease;
+    padding: 26px 24px; margin-bottom: 16px; box-shadow: var(--shadow);
   }
-  @keyframes cardIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-  @media (prefers-reduced-motion: reduce) { .card { animation: none; } }
 
   .card-eyebrow {
-    font-size: 0.72rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 700;
-    color: var(--ink-faint); margin-bottom: 14px;
+    font-size: 0.88rem; font-weight: 600;
+    color: var(--ink-soft); margin-bottom: 14px;
   }
 
   /* ---------- Recipe card ---------- */
   .method-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-  .method-name { font-family: var(--font-serif); font-size: 1.55rem; font-weight: 500; color: var(--ink); letter-spacing: -0.01em; }
+  .method-name { font-family: var(--font-display); font-size: 2.25rem; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; line-height: 1.1; }
   .method-type {
-    font-size: 0.7rem; font-weight: 700; color: var(--ink-soft); border: 1px solid var(--line);
-    padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; margin-top: 4px;
+    font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); border: 1px solid var(--line);
+    padding: 4px 10px; border-radius: var(--r-sm); white-space: nowrap; margin-top: 4px;
   }
   .method-desc { color: var(--ink-soft); font-size: 0.9rem; margin-bottom: 18px; line-height: 1.55; }
 
   .specs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
   .spec {
-    background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px;
+    background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 6px 13px;
     font-size: 0.78rem; color: var(--ink-soft);
   }
   .spec b { color: var(--ink); font-weight: 700; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -180,7 +199,7 @@
   }
 
   .grind-scale { margin: 4px 0 18px; }
-  .grind-scale-label { font-size: 0.72rem; color: var(--ink-faint); margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+  .grind-scale-label { font-size: 0.82rem; color: var(--ink-soft); margin-bottom: 12px; font-weight: 600; }
   .grind-track { position: relative; height: 20px; }
   .grind-track::before {
     content: ''; position: absolute; left: 4px; right: 4px; top: 50%; height: 2px;
@@ -198,7 +217,7 @@
   .recipe-chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .recipe-chip {
     border: 1px solid var(--line); background: var(--paper); color: var(--ink-soft);
-    padding: 8px 14px; border-radius: 999px; font-size: 0.79rem; font-weight: 600; cursor: pointer;
+    padding: 8px 14px; border-radius: var(--r-sm); font-size: 0.79rem; font-weight: 600; cursor: pointer;
     font-family: var(--font-sans); transition: all .2s ease; min-height: 38px;
   }
   .recipe-chip:hover { border-color: var(--accent); color: var(--ink); }
@@ -206,7 +225,7 @@
   .recipe-desc { font-size: 0.82rem; color: var(--ink-soft); line-height: 1.5; margin-top: 10px; }
   .recipe-desc b { color: var(--ink); }
   .recipe-credit {
-    font-family: var(--font-serif); font-style: italic; font-size: 0.9rem; color: var(--ink-soft);
+    font-family: var(--font-display); font-size: 0.88rem; color: var(--ink-soft);
     margin: 8px 0 0;
   }
 
@@ -222,14 +241,14 @@
   .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
   .preset {
     border: 1px dashed var(--line); background: transparent; color: var(--ink-soft);
-    padding: 6px 13px; border-radius: 999px; cursor: pointer; font-size: 0.78rem; font-weight: 600;
+    padding: 6px 13px; border-radius: var(--r-sm); cursor: pointer; font-size: 0.78rem; font-weight: 600;
     font-family: var(--font-sans); transition: border-color .2s ease, color .2s ease;
   }
   .preset:hover { border-color: var(--accent); color: var(--accent); }
 
   .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
   @media (max-width: 420px) { .calc-grid { grid-template-columns: 1fr; } }
-  .field label { display: block; font-size: 0.72rem; color: var(--ink-faint); margin-bottom: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .field label { display: block; font-size: 0.82rem; color: var(--ink-soft); margin-bottom: 8px; font-weight: 600; }
   .field input[type=number] {
     width: 100%; padding: 16px; font-size: 1.7rem; font-weight: 700;
     font-family: var(--font-mono); font-variant-numeric: tabular-nums;
@@ -261,15 +280,15 @@
   /* ---------- Result strip (inside recipe card) ---------- */
   .result-banner {
     display: flex; justify-content: space-around; text-align: center; flex-wrap: wrap; gap: 14px;
-    background: var(--accent-tint); border: 1px solid var(--line); border-radius: var(--r-md);
-    padding: 22px 18px; margin: 22px 0 18px;
+    background: var(--panel); color: var(--panel-ink); border-radius: var(--r-md);
+    padding: 24px 18px; margin: 22px 0 18px;
   }
   .rb-item .rb-val {
     font-family: var(--font-mono); font-variant-numeric: tabular-nums;
-    font-size: 1.7rem; font-weight: 700; color: var(--ink); letter-spacing: -0.02em;
+    font-size: 1.55rem; font-weight: 700; color: var(--panel-ink); letter-spacing: -0.02em;
   }
-  .rb-item.rb-hero .rb-val { color: var(--accent); }
-  .rb-item .rb-lab { font-size: 0.7rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .08em; margin-top: 4px; }
+  .rb-item.rb-hero .rb-val { font-size: 2.4rem; color: var(--panel-accent); }
+  .rb-item .rb-lab { font-size: 0.78rem; color: color-mix(in srgb, var(--panel-ink) 88%, transparent); margin-top: 4px; }
 
   .action-row { display: flex; gap: 10px; }
   .timer-btn {
@@ -295,12 +314,12 @@
     border-radius: var(--r-sm); padding: 12px 6px;
   }
   .dstat-val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.1rem; color: var(--ink); }
-  .dstat-lab { font-size: 0.62rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .06em; margin-top: 3px; }
+  .dstat-lab { font-size: 0.72rem; color: var(--ink-faint); margin-top: 3px; }
 
   /* ---------- Steps ---------- */
   h3.section {
-    font-size: 0.72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-faint);
-    font-weight: 700; margin-bottom: 4px;
+    font-size: 0.88rem; color: var(--ink-soft);
+    font-weight: 600; margin-bottom: 4px;
   }
   ol.steps { list-style: none; counter-reset: step; margin-top: 16px; }
   ol.steps li {
@@ -320,7 +339,7 @@
   .step-time { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink-soft); font-weight: 700; }
 
   /* ---------- Water quality (collapsible) ---------- */
-  .water-card h3 { font-family: var(--font-serif); font-size: 1.1rem; font-weight: 500; color: var(--ink); }
+  .water-card h3 { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--ink); }
   details.water-card summary {
     list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px;
   }
@@ -344,14 +363,13 @@
     width: 100%; max-width: 380px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-sm);
     background: var(--paper); color: var(--ink); font-family: var(--font-sans); font-size: 0.88rem; cursor: pointer;
   }
-  .grinder-select:focus { outline: none; border-color: var(--accent); }
+  .grinder-select:focus-visible { border-color: var(--accent); }
   .grinder-result { margin-top: 12px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 14px 16px; }
   .gr-main { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .gr-pos { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 1.7rem; font-weight: 700; color: var(--accent); }
   .gr-clicks { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.85rem; color: var(--ink-soft); }
   .gr-badge {
-    font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
-    border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; color: var(--ink-faint);
+    font-size: 0.72rem; font-weight: 600; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px 8px; color: var(--ink-faint);
   }
   .gr-range { font-size: 0.8rem; color: var(--ink-soft); margin-top: 6px; line-height: 1.5; }
   .gr-range b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
@@ -363,21 +381,21 @@
   }
   .gr-input:focus { outline: none; border-color: var(--accent); }
   .gr-btn {
-    border: 1px solid var(--line); background: transparent; color: var(--ink-soft); padding: 8px 14px; border-radius: 999px;
+    border: 1px solid var(--line); background: transparent; color: var(--ink-soft); padding: 8px 14px; border-radius: var(--r-sm);
     font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: var(--font-sans); transition: border-color .2s ease, color .2s ease;
   }
   .gr-btn:hover { border-color: var(--accent); color: var(--ink); }
   .gr-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .gguide h4 {
-    font-size: 0.72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-faint);
-    font-weight: 700; margin: 20px 0 8px;
+    font-size: 0.88rem; color: var(--ink);
+    font-weight: 600; margin: 22px 0 8px;
   }
   .gguide .specs { margin: 14px 0 4px; }
   .gguide p, .gnote { font-size: 0.82rem; color: var(--ink-soft); line-height: 1.55; margin: 6px 0; }
   .gtable-wrap { overflow-x: auto; margin: 8px 0; }
   .gtable { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
   .gtable th {
-    text-align: left; font-size: 0.66rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-faint);
+    text-align: left; font-size: 0.76rem; font-weight: 600; color: var(--ink-soft);
     padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap;
   }
   .gtable td { padding: 8px; border-bottom: 1px solid var(--line); color: var(--ink-soft); vertical-align: top; line-height: 1.45; }
@@ -402,7 +420,7 @@
   }
   .timer-close:hover { border-color: var(--accent); }
   .timer-method {
-    font-family: var(--font-serif); color: var(--ink-soft); font-size: 1.05rem; font-style: italic; margin-bottom: 16px;
+    font-family: var(--font-display); color: var(--ink-soft); font-size: 1.05rem; font-style: italic; margin-bottom: 16px;
   }
   .timer-panel { display: none; flex-direction: column; align-items: center; }
   .timer-ring-wrap { position: relative; width: 240px; height: 240px; margin: 0 auto 26px; max-width: 64vw; max-height: 64vw; }
@@ -417,7 +435,7 @@
     font-family: var(--font-mono); font-variant-numeric: tabular-nums;
     font-size: 2.6rem; font-weight: 700; color: var(--ink); letter-spacing: -0.02em;
   }
-  .timer-step-title { font-family: var(--font-serif); font-size: 1.35rem; font-weight: 500; color: var(--ink); margin-bottom: 8px; max-width: 420px; }
+  .timer-step-title { font-family: var(--font-display); font-size: 1.35rem; font-weight: 500; color: var(--ink); margin-bottom: 8px; max-width: 420px; }
   .timer-step-detail { font-size: 0.94rem; color: var(--ink-soft); max-width: 420px; margin-bottom: 12px; line-height: 1.5; }
   .timer-next { font-size: 0.78rem; color: var(--ink-faint); margin-bottom: 26px; min-height: 1.2em; }
   .timer-controls { display: flex; align-items: center; gap: 16px; }
@@ -438,11 +456,11 @@
   .timer-main-btn:hover { opacity: .9; }
   .timer-manual-nav { display: flex; align-items: center; gap: 20px; margin-top: 16px; }
   .timer-manual-count { font-size: 0.8rem; color: var(--ink-faint); min-width: 90px; font-family: var(--font-mono); }
-  .timer-start-btn { width: auto; border-radius: 999px; padding: 0 32px; font-size: 1rem; font-weight: 700; margin-top: 8px; font-family: var(--font-sans); }
+  .timer-start-btn { width: auto; border-radius: var(--r-sm); padding: 0 32px; font-size: 1rem; font-weight: 700; margin-top: 8px; font-family: var(--font-sans); }
 
   .toast {
     position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(16px);
-    background: var(--ink); color: var(--bg); padding: 12px 20px; border-radius: 999px;
+    background: var(--ink); color: var(--bg); padding: 12px 20px; border-radius: var(--r-sm);
     font-size: 0.84rem; font-weight: 600; opacity: 0; pointer-events: none; transition: all .3s ease;
     z-index: 1200; max-width: 85vw; text-align: center;
   }
@@ -451,10 +469,10 @@
 
   /* ---------- Diary ---------- */
   .diary-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .diary-header h3 { font-family: var(--font-serif); font-size: 1.1rem; font-weight: 500; color: var(--ink); }
+  .diary-header h3 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 500; color: var(--ink); }
   .diary-add-btn {
     border: 1px solid var(--line); background: transparent; color: var(--ink);
-    padding: 7px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    padding: 7px 14px; border-radius: var(--r-sm); font-size: 0.8rem; font-weight: 600; cursor: pointer;
     font-family: var(--font-sans); transition: border-color .2s ease;
   }
   .diary-add-btn:hover { border-color: var(--accent); }
@@ -468,7 +486,7 @@
   .diary-del:hover, .diary-edit:hover { color: var(--accent); }
   .diary-del .svg-icon, .diary-edit .svg-icon { width: 15px; height: 15px; }
   .diary-del.confirm {
-    background: var(--accent); color: var(--accent-ink); border-radius: 999px;
+    background: var(--accent); color: var(--accent-ink); border-radius: var(--r-sm);
     font-size: 0.68rem; font-weight: 700; padding: 4px 10px; font-family: var(--font-sans);
   }
   .diary-item-recipe { font-size: 0.82rem; color: var(--ink-soft); margin: 6px 0 4px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -481,7 +499,7 @@
   .diary-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
   .diary-filter-chip {
     border: 1px solid var(--line); background: transparent; color: var(--ink-soft);
-    padding: 6px 13px; border-radius: 999px; font-size: 0.76rem; font-weight: 600; cursor: pointer;
+    padding: 6px 13px; border-radius: var(--r-sm); font-size: 0.76rem; font-weight: 600; cursor: pointer;
     font-family: var(--font-sans); transition: all .2s ease;
   }
   .diary-filter-chip.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
@@ -507,7 +525,7 @@
   .repeat-banner-text { font-size: 0.84rem; color: var(--ink); font-weight: 600; }
   .repeat-banner-text b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--accent); }
   .repeat-banner-btn {
-    border: none; background: var(--accent); color: var(--accent-ink); border-radius: 999px;
+    border: none; background: var(--accent); color: var(--accent-ink); border-radius: var(--r-sm);
     padding: 8px 16px; font-size: 0.8rem; font-weight: 700; cursor: pointer; font-family: var(--font-sans);
     white-space: nowrap; flex-shrink: 0; transition: opacity .2s ease;
   }
@@ -517,7 +535,7 @@
   .diary-actions { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
   .diary-action-btn {
     border: 1px solid var(--line); background: transparent; color: var(--ink-soft);
-    padding: 6px 13px; border-radius: 999px; font-size: 0.76rem; font-weight: 600; cursor: pointer;
+    padding: 6px 13px; border-radius: var(--r-sm); font-size: 0.76rem; font-weight: 600; cursor: pointer;
     font-family: var(--font-sans); transition: border-color .2s ease, color .2s ease, background .2s ease;
   }
   .diary-action-btn:hover { border-color: var(--accent); color: var(--ink); }
@@ -1893,7 +1911,7 @@ const $ = id => document.getElementById(id);
 
 function renderTabs() {
   $('tabs').innerHTML = ORDER.map(k =>
-    `<button class="tab ${k === state.method ? 'active' : ''}" data-m="${k}"><span class="tab-ico">${METHODS[k].icon}</span>${METHODS[k].name}</button>`
+    `<button class="tab ${k === state.method ? 'active' : ''}" data-m="${k}">${METHODS[k].name}</button>`
   ).join('');
   $('tabs').querySelectorAll('.tab').forEach(b =>
     b.addEventListener('click', () => { state.method = b.dataset.m; save(); render(); })
@@ -1925,11 +1943,11 @@ function renderFreshness() {
     return;
   }
   let msg, phase, color;
-  if (days <= 3) { msg = t('freshVeryRecent')(days); phase = 'degas'; color = '#7d90ad'; }
-  else if (days <= 14) { msg = t('freshPeak')(days); phase = 'peak'; color = '#4a8f5d'; }
-  else if (days <= 21) { msg = t('freshGood')(days); phase = 'good'; color = '#8a9a45'; }
-  else if (days <= 30) { msg = t('freshFading')(days); phase = 'fading'; color = '#c07f2f'; }
-  else { msg = t('freshStale')(days); phase = 'stale'; color = '#b04a3c'; }
+  if (days <= 3) { msg = t('freshVeryRecent')(days); phase = 'degas'; color = 'var(--ink-soft)'; }
+  else if (days <= 14) { msg = t('freshPeak')(days); phase = 'peak'; color = 'var(--success)'; }
+  else if (days <= 21) { msg = t('freshGood')(days); phase = 'good'; color = 'var(--success)'; }
+  else if (days <= 30) { msg = t('freshFading')(days); phase = 'fading'; color = 'var(--warning)'; }
+  else { msg = t('freshStale')(days); phase = 'stale'; color = 'var(--danger)'; }
   const pct = Math.max(3, Math.min(100, (days / 35) * 100));
   el.innerHTML = `
     <div class="fresh-head">
@@ -2165,7 +2183,7 @@ function renderGrinderGuide(cur) {
           `<td class="nowrap">${gFmtPos(g, r.lo)} – ${gFmtPos(g, r.hi)}</td></tr>`;
       });
       (GRINDER_EXTRA[cur] || []).forEach(x => {
-        rows += `<tr><td>${gt('extra')[x.id]}</td><td class="nowrap">—</td><td class="nowrap">${gFmtPos(g, x.lo)} – ${gFmtPos(g, x.hi)}</td></tr>`;
+        rows += `<tr><td>${gt('extra')[x.id]}</td><td class="nowrap">-</td><td class="nowrap">${gFmtPos(g, x.lo)} – ${gFmtPos(g, x.hi)}</td></tr>`;
       });
       h += `<h4>${gt('hTable')}</h4><div class="gtable-wrap"><table class="gtable"><thead><tr><th>${gt('thMethod')}</th><th>${gt('thStart')}</th><th>${gt('thRange')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
       if (anyEst) h += `<p class="gnote">${gt('estNote')}</p>`;
@@ -2731,21 +2749,21 @@ function buildRecipeCanvas() {
   const ctx = canvas.getContext && canvas.getContext('2d');
   if (!ctx) return null;
 
-  const paper = '#f5f1ea', ink = '#24201b', inkSoft = '#736a5e', inkFaint = '#a89d8d', line = '#e4dccc', accent = '#b5511f';
+  const paper = '#f5f1ea', ink = '#24201b', inkSoft = '#655c50', inkFaint = '#6f6556', line = '#e4dccc', accent = '#ae4d1b';
 
   ctx.fillStyle = paper; ctx.fillRect(0, 0, W_, H_);
   ctx.fillStyle = accent; ctx.fillRect(0, 0, W_, 16);
 
   ctx.fillStyle = inkFaint;
-  ctx.font = '700 26px -apple-system, sans-serif';
+  ctx.font = '700 26px "Chakra Petch", -apple-system, sans-serif';
   ctx.fillText(t('canvasHeader'), pad, 110);
 
   ctx.fillStyle = ink;
-  ctx.font = '500 80px Georgia, "Times New Roman", serif';
+  ctx.font = '600 76px "Chakra Petch", -apple-system, sans-serif';
   ctx.fillText(m.name, pad, 210);
 
   ctx.fillStyle = inkSoft;
-  ctx.font = '500 32px -apple-system, sans-serif';
+  ctx.font = '500 32px "Chakra Petch", -apple-system, sans-serif';
   ctx.fillText(mType(key), pad, 254);
 
   ctx.strokeStyle = line; ctx.lineWidth = 2;
@@ -2755,11 +2773,11 @@ function buildRecipeCanvas() {
   function stat(i, label, value, color) {
     const x = pad + i * colW;
     ctx.fillStyle = color;
-    ctx.font = '700 88px ui-monospace, Menlo, "Roboto Mono", monospace';
+    ctx.font = '700 88px "JetBrains Mono", ui-monospace, Menlo, monospace';
     ctx.fillText(value, x, 470);
     ctx.fillStyle = inkFaint;
-    ctx.font = '700 24px -apple-system, sans-serif';
-    ctx.fillText(label.toUpperCase(), x, 508);
+    ctx.font = '700 24px "Chakra Petch", -apple-system, sans-serif';
+    ctx.fillText(label, x, 508);
   }
   stat(0, t('canvasCoffee'), fmt(v.dose) + 'g', ink);
   stat(1, t('canvasWater'), water + 'g', ink);
@@ -2773,43 +2791,43 @@ function buildRecipeCanvas() {
   ctx.fillStyle = accent; ctx.fill();
 
   ctx.fillStyle = inkSoft;
-  ctx.font = '500 26px -apple-system, sans-serif';
+  ctx.font = '500 26px "Chakra Petch", -apple-system, sans-serif';
   ctx.fillText(t('canvasPct')((cPct * 100).toFixed(1), (100 - cPct * 100).toFixed(1)), pad, 642);
 
   let y = 722;
   Object.entries(mSpecsOf(key)).forEach(([k2, val]) => {
     ctx.fillStyle = inkFaint;
-    ctx.font = '700 24px -apple-system, sans-serif';
+    ctx.font = '700 24px "Chakra Petch", -apple-system, sans-serif';
     ctx.fillText(k2.toUpperCase(), pad, y);
     ctx.fillStyle = ink;
-    ctx.font = '500 32px -apple-system, sans-serif';
+    ctx.font = '500 32px "Chakra Petch", -apple-system, sans-serif';
     ctx.fillText(val2(k2, val), pad, y + 38);
     y += 92;
   });
 
   ctx.fillStyle = inkFaint;
-  ctx.font = '700 24px -apple-system, sans-serif';
+  ctx.font = '700 24px "Chakra Petch", -apple-system, sans-serif';
   const roastLabel = t('roastLabelShort')[state.roast || 'medium'];
   ctx.fillText(t('canvasRoastGrind'), pad, y + 10);
   ctx.fillStyle = ink;
-  ctx.font = '500 32px -apple-system, sans-serif';
+  ctx.font = '500 32px "Chakra Petch", -apple-system, sans-serif';
   ctx.fillText(`${roastLabel} · ${t('canvasLevel')(m.grind)}`, pad, y + 48);
 
   const gs = grinderSettingFor(key);
   if (gs) {
     const gr = GRINDERS[state.grinder];
     ctx.fillStyle = inkFaint;
-    ctx.font = '700 24px -apple-system, sans-serif';
+    ctx.font = '700 24px "Chakra Petch", -apple-system, sans-serif';
     ctx.fillText(gt('canvasGrinder'), pad, y + 100);
     ctx.fillStyle = ink;
-    ctx.font = '500 32px -apple-system, sans-serif';
+    ctx.font = '500 32px "Chakra Petch", -apple-system, sans-serif';
     ctx.fillText(`${gr.name} · ${gFmtPos(gr, gs.clicks)} (${gClicksTxt(gs.clicks)})`, pad, y + 138);
   }
 
   ctx.strokeStyle = line; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(pad, H_ - 110); ctx.lineTo(W_ - pad, H_ - 110); ctx.stroke();
   ctx.fillStyle = inkFaint;
-  ctx.font = '500 26px -apple-system, sans-serif';
+  ctx.font = '500 26px "Chakra Petch", -apple-system, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(t('canvasFooter'), W_ / 2, H_ - 60);
   ctx.textAlign = 'left';
