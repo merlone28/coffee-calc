@@ -1,4 +1,5 @@
 import { ICON, ROAST, fmt, roastNote, val2 } from './core.js';
+import { cToF, isImperial, massForInput, massFromInput } from './units.js';
 import { METHODS } from './data/methods.js';
 import { RECIPES, activeRecipe } from './data/recipes.js';
 import { mDesc, mHint, mLang, mPresetLabel, mSpecsOf, mType, stepsFor, t } from './i18n.js';
@@ -109,8 +110,9 @@ export function render() {
     tempRow.style.display = 'none';
   }
 
-  $('doseInput').value = Math.round(v.dose * 2) / 2;
-  $('waterInput').value = water;
+  setMassInputs();
+  $('doseInput').value = massForInput(v.dose);
+  $('waterInput').value = massForInput(water);
   $('doseLabel').textContent = t(m.waterDriven ? 'doseLabelWD' : 'doseLabel');
   $('waterLabel').textContent = t(m.waterDriven ? 'waterLabelWD' : 'waterLabel');
 
@@ -150,13 +152,25 @@ export function render() {
   renderGrinder();
 }
 
+// Limiti e passo dei campi dose/acqua nell'unità corrente (min/step in HTML sono in grammi)
+function setMassInputs() {
+  const dose = $('doseInput'), water = $('waterInput');
+  if (isImperial()) {
+    dose.min = 0.05; dose.step = 0.05;
+    water.min = 0.5; water.step = 0.5;
+  } else {
+    dose.min = 1; dose.step = 0.5;
+    water.min = 10; water.step = 5;
+  }
+}
+
 function buildBanner(m, v, water) {
   let banner = `
     <div class="rb-item"><div class="rb-val">${fmt(v.dose)} g</div><div class="rb-lab">${t('rbCoffee')}</div></div>
     <div class="rb-item"><div class="rb-val">${water} g</div><div class="rb-lab">${t('rbWater')}</div></div>
     <div class="rb-item rb-hero"><div class="rb-val">1:${v.ratio}</div><div class="rb-lab">${t('rbRatio')}</div></div>`;
   if (m.temp && v.temp != null) {
-    banner += `<div class="rb-item"><div class="rb-val">${v.temp}°</div><div class="rb-lab">${t('rbTemp')}</div></div>`;
+    banner += `<div class="rb-item"><div class="rb-val">${isImperial() ? Math.round(cToF(v.temp)) : v.temp}°</div><div class="rb-lab">${t('rbTemp')}</div></div>`;
   }
   if (m.coldbrew && state.cbMode === 'conc') {
     banner += `<div class="rb-item"><div class="rb-val">~${Math.round(water * 2 * 0.85)} g</div><div class="rb-lab">${t('rbFinalDrink')}</div></div>`;
@@ -174,8 +188,8 @@ function renderOutputs(fromSlider) {
   const v = getVals(key);
   const water = Math.round(v.dose * v.ratio);
   $('ratioVal').textContent = '1 : ' + v.ratio;
-  if (document.activeElement !== $('doseInput')) $('doseInput').value = Math.round(v.dose * 2) / 2;
-  if (document.activeElement !== $('waterInput') || fromSlider) $('waterInput').value = water;
+  if (document.activeElement !== $('doseInput')) $('doseInput').value = massForInput(v.dose);
+  if (document.activeElement !== $('waterInput') || fromSlider) $('waterInput').value = massForInput(water);
 
   $('resultBanner').innerHTML = buildBanner(m, v, water);
   $('mSteps').innerHTML = stepsFor(key, v.dose, water).map(s => `<li>${s}</li>`).join('');
@@ -193,14 +207,14 @@ export function applyTheme() {
 export function initRender() {
   // Input handlers — bidirectional
   $('doseInput').addEventListener('input', () => {
-    const d = parseFloat($('doseInput').value);
+    const d = massFromInput(parseFloat($('doseInput').value));
     if (!d || d <= 0) return;
     const v = getVals(state.method);
     v.dose = d;
     save(); renderOutputs();
   });
   $('waterInput').addEventListener('input', () => {
-    const w = parseFloat($('waterInput').value);
+    const w = massFromInput(parseFloat($('waterInput').value));
     if (!w || w <= 0) return;
     const v = getVals(state.method);
     v.dose = w / v.ratio;

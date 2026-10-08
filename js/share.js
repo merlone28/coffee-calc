@@ -1,4 +1,5 @@
 import { fmt, val2 } from './core.js';
+import { convertText, massShort } from './units.js';
 import { METHODS } from './data/methods.js';
 import { mSpecsOf, mType, t } from './i18n.js';
 import { $, getVals, state } from './app.js';
@@ -77,8 +78,8 @@ function buildRecipeCanvas() {
     ctx.font = '700 24px "Chakra Petch", -apple-system, sans-serif';
     ctx.fillText(label, x, 508);
   }
-  stat(0, t('canvasCoffee'), fmt(v.dose) + 'g', ink);
-  stat(1, t('canvasWater'), water + 'g', ink);
+  stat(0, t('canvasCoffee'), massShort(v.dose, fmt), ink);
+  stat(1, t('canvasWater'), massShort(water, fmt), ink);
   stat(2, t('canvasRatio'), '1:' + v.ratio, accent);
 
   const barY = 570, barH = 28, barW = W_ - pad * 2;
@@ -99,7 +100,7 @@ function buildRecipeCanvas() {
     ctx.fillText(k2.toUpperCase(), pad, y);
     ctx.fillStyle = ink;
     ctx.font = '500 32px "Chakra Petch", -apple-system, sans-serif';
-    ctx.fillText(val2(k2, val), pad, y + 38);
+    ctx.fillText(convertText(val2(k2, val)), pad, y + 38);
     y += 92;
   });
 
