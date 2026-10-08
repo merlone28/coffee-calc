@@ -12,6 +12,8 @@ Web app (PWA) per calcolare dosi, acqua e rapporti di estrazione per sei metodi 
 - **Rapporti corretti per metodo**: ogni tecnica ha il suo range (V60 1:14–1:17, moka 1:7–1:12, AeroPress 1:10–1:17, cold brew concentrato o pronto da bere)
 - **Procedura passo-passo** con tempi e quantità ricalcolate in tempo reale: bloom, versate parziali, apertura valvola, diluizione
 - **Preset rapidi**: tazze per i pour-over, taglie caldaia per la moka, volumi per il cold brew
+- **Profili macinino 1Zpresso** (X-Ultra, X-Pro S, J-Ultra, J-Max S, JX-Pro S, K-Ultra, K-Max, Q2/J): click di partenza e range per ogni metodo in formato giri.numero.click (fasce verificate per X-Ultra), possibilità di salvare il proprio setting per metodo
+- **Guida alla macinatura**: come leggere i numeri, taratura dello zero, tabella "nel bicchiere → cosa fare" con i click calcolati sul passo del tuo macinino, consigli per tostatura e freschezza
 - **Linee guida sull'acqua** secondo gli standard SCA: TDS, durezza, alcalinità, pH
 - **Funziona offline** e salva le tue impostazioni sul dispositivo
 
