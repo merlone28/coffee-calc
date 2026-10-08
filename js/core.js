@@ -1,10 +1,13 @@
-const fmt = n => (Math.round(n * 2) / 2).toLocaleString('it-IT');
-const W = (n) => `<span class="step-water">${fmt(n)} g</span>`;
-const T = (t) => `<span class="step-time">${t}</span>`;
+import { t } from './i18n.js';
+import { state } from './app.js';
+
+export const fmt = n => (Math.round(n * 2) / 2).toLocaleString('it-IT');
+export const W = (n) => `<span class="step-water">${fmt(n)} g</span>`;
+export const T = (t) => `<span class="step-time">${t}</span>`;
 
 // ===== Inline SVG icon set (consistent rendering across platforms) =====
 const svgI = (inner) => `<svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`;
-const ICON = {
+export const ICON = {
   moon: svgI('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'),
   sun: svgI('<circle cx="12" cy="12" r="4"/><line x1="12" y1="1.5" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.5"/><line x1="4.6" y1="4.6" x2="6.4" y2="6.4"/><line x1="17.6" y1="17.6" x2="19.4" y2="19.4"/><line x1="1.5" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.5" y2="12"/><line x1="4.6" y1="19.4" x2="6.4" y2="17.6"/><line x1="17.6" y1="6.4" x2="19.4" y2="4.6"/>'),
   bell: svgI('<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'),
@@ -20,9 +23,9 @@ const ICON = {
   close: svgI('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>')
 };
 
-const ROAST = { light: { tempDelta: 2 }, medium: { tempDelta: 0 }, dark: { tempDelta: -3 } };
-function roastNote(r) { return r === 'light' ? t('roastLightNote') : r === 'dark' ? t('roastDarkNote') : ''; }
-function val2(key, val) {
+export const ROAST = { light: { tempDelta: 2 }, medium: { tempDelta: 0 }, dark: { tempDelta: -3 } };
+export function roastNote(r) { return r === 'light' ? t('roastLightNote') : r === 'dark' ? t('roastDarkNote') : ''; }
+export function val2(key, val) {
   if (key !== 'Temperatura' && key !== 'Temperature') return val;
   const delta = ROAST[state.roast || 'medium'].tempDelta;
   if (!delta) return val;

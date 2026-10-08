@@ -1,4 +1,6 @@
-const METHODS = {
+import { T, W, fmt } from '../core.js';
+
+export const METHODS = {
   v60: {
     name: 'Hario V60', icon: '🌀', type: 'Percolazione', dose: 20, ratio: 15, min: 14, max: 17, grind: 3, temp: [92, 96],
     desc: 'Pour-over conico: tazza pulita e brillante. Il rapporto classico è 1:15 (≈ 60 g/L).',
@@ -139,5 +141,5 @@ const METHODS = {
   }
 };
 
-const ORDER = ['v60', 'aeropress', 'kalita', 'switch', 'moka', 'coldbrew'];
-const LS_KEY = 'coffee-brew-calc-v1';
+export const ORDER = ['v60', 'aeropress', 'kalita', 'switch', 'moka', 'coldbrew'];
+export const LS_KEY = 'coffee-brew-calc-v1';

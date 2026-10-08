@@ -1,3 +1,6 @@
+import { $ } from './app.js';
+import { t } from './i18n.js';
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").then(reg => {

@@ -1,7 +1,16 @@
+import { ROAST, fmt } from './core.js';
+import { METHODS } from './data/methods.js';
+import { RECIPES, activeRecipe } from './data/recipes.js';
+import { t } from './i18n.js';
+import { $, getVals, renderFreshness, save, state } from './app.js';
+import { render } from './render.js';
+import { timer } from './timer.js';
+import { showToast } from './share.js';
+
 // ===== Diario infusioni =====
-const LS_DIARY_KEY = 'coffee-brew-diary-v1';
+export const LS_DIARY_KEY = 'coffee-brew-diary-v1';
 let pendingDiary = null, pendingRating = 0;
-let compareMode = false, compareSelected = [];
+export let compareMode = false, compareSelected = [];
 let diaryFilter = null, editingDiaryId = null;
 
 function escapeHtml(s) {
@@ -9,7 +18,7 @@ function escapeHtml(s) {
 }
 // Normalizza una voce del diario (da localStorage o da un file importato):
 // tiene solo i campi noti, forza i tipi e limita i range. Restituisce null se inutilizzabile.
-function sanitizeEntry(raw) {
+export function sanitizeEntry(raw) {
   if (!raw || typeof raw !== 'object' || typeof raw.methodName !== 'string' || !raw.methodName.trim()) return null;
   const num = (v, min, max) => { const n = Number(v); return Number.isFinite(n) && n >= min && n <= max ? n : null; };
   const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
@@ -32,7 +41,7 @@ function sanitizeEntry(raw) {
   if (typeof raw.recipeTag === 'string') e.recipeTag = raw.recipeTag.slice(0, 40);
   return e;
 }
-function loadDiary() {
+export function loadDiary() {
   try { const a = JSON.parse(localStorage.getItem(LS_DIARY_KEY)); return Array.isArray(a) ? a.map(sanitizeEntry).filter(Boolean) : []; } catch (e) { return []; }
 }
 function saveDiary(arr) { try { localStorage.setItem(LS_DIARY_KEY, JSON.stringify(arr.slice(0, 100))); } catch (e) {} }
@@ -65,7 +74,7 @@ function renderDiaryStats(diary) {
     <div class="dstat"><div class="dstat-val">${streak}${state.lang === 'en' ? 'd' : 'g'}</div><div class="dstat-lab">${t('dstatStreak')}</div></div>`;
   el.classList.remove('hidden');
 }
-function renderDiary() {
+export function renderDiary() {
   const diary = loadDiary();
   $('diaryEmpty').classList.toggle('hidden', diary.length > 0);
   renderDiaryStats(diary);
@@ -152,14 +161,6 @@ function onCompareCheck(e) {
     showToast(t('compareSelectToast'));
   }
 }
-$('diaryCompareBtn').addEventListener('click', () => {
-  const diary = loadDiary();
-  if (diary.length < 2) return;
-  compareMode = !compareMode;
-  compareSelected = [];
-  $('diaryCompareBtn').textContent = compareMode ? t('diaryCompareCancelBtn') : t('diaryCompareBtn');
-  renderDiary();
-});
 function compareColHtml(e) {
   const date = new Date(e.date).toLocaleDateString(t('localeCode'), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const stars = e.rating ? `<div class="compare-stars">${'★'.repeat(e.rating)}${'☆'.repeat(5 - e.rating)}</div>` : `<div class="compare-stars">—</div>`;
@@ -184,71 +185,6 @@ function openCompare(id1, id2) {
   $('compareOverlay').classList.add('show');
   document.body.style.overflow = 'hidden';
 }
-$('compareClose').addEventListener('click', () => {
-  $('compareOverlay').classList.remove('show');
-  document.body.style.overflow = '';
-});
-
-// ===== Export / import diario =====
-$('diaryExportBtn').addEventListener('click', () => {
-  const diary = loadDiary();
-  const payload = {
-    app: 'coffee-brew-calc', version: 2, exportedAt: new Date().toISOString(),
-    settings: { roast: state.roast || 'medium', roastDate: state.roastDate || null },
-    diary
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const dateStr = new Date().toISOString().slice(0, 10);
-  const a = document.createElement('a');
-  a.href = url; a.download = `${state.lang === 'en' ? 'coffee-diary' : 'diario-caffe'}-${dateStr}.json`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
-  showToast(t('diaryExported'));
-});
-$('diaryImportBtn').addEventListener('click', () => $('diaryImportFile').click());
-$('diaryImportFile').addEventListener('change', (e) => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const data = JSON.parse(reader.result);
-      const incoming = Array.isArray(data) ? data : (Array.isArray(data.diary) ? data.diary : null);
-      if (!incoming) throw new Error('invalid');
-      const existing = loadDiary();
-      const existingIds = new Set(existing.map(x => String(x.id)));
-      let added = 0, skipped = 0;
-      incoming.forEach(raw => {
-        const entry = sanitizeEntry(raw);
-        if (!entry) return;
-        if (raw.id && existingIds.has(String(entry.id))) { skipped++; return; }
-        existing.push(entry);
-        existingIds.add(String(entry.id));
-        added++;
-      });
-      existing.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-      saveDiary(existing);
-      // Ripristina impostazioni tostatura se presenti nel backup (v2)
-      let settingsMsg = '';
-      if (data && data.settings && typeof data.settings === 'object') {
-        if (data.settings.roast && ROAST[data.settings.roast]) state.roast = data.settings.roast;
-        if ('roastDate' in data.settings) {
-          state.roastDate = data.settings.roastDate || null;
-          $('roastDateInput').value = state.roastDate || '';
-        }
-        save(); renderFreshness(); render();
-        settingsMsg = t('diarySettingsRestored');
-      }
-      renderDiary();
-      showToast(t('diaryImported')(added) + (skipped ? t('diaryImportSkipped')(skipped) : '') + settingsMsg);
-    } catch (err) {
-      showToast(t('diaryImportInvalid'));
-    }
-    $('diaryImportFile').value = '';
-  };
-  reader.readAsText(file);
-});
 
 // ===== Ripeti ultima infusione =====
 function renderRepeatBanner() {
@@ -261,21 +197,6 @@ function renderRepeatBanner() {
   $('repeatLastBtn').textContent = t('repeatLastBtn');
   wrap.classList.remove('hidden');
 }
-$('repeatLastBtn').addEventListener('click', () => {
-  const diary = loadDiary();
-  if (!diary.length) return;
-  const last = diary[0];
-  if (!METHODS[last.method]) return;
-  state.method = last.method;
-  state.vals[last.method] = { dose: last.dose, ratio: last.ratio };
-  if (last.temp) state.vals[last.method].temp = last.temp;
-  if (last.recipe && RECIPES[last.method] && RECIPES[last.method].find(r => r.id === last.recipe)) state.vals[last.method].recipe = last.recipe;
-  if (METHODS[last.method].coldbrew && last.cbMode) state.cbMode = last.cbMode;
-  save();
-  render();
-  showToast(t('recipeReloaded'));
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-});
 
 function openDiaryForm(prefill, isEdit) {
   pendingDiary = prefill;
@@ -288,39 +209,129 @@ function openDiaryForm(prefill, isEdit) {
   $('diaryNote').value = isEdit ? (prefill.note || '') : '';
   $('diaryOverlay').classList.add('show');
 }
-$('diaryStars').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
-  pendingRating = parseInt(b.dataset.v, 10);
-  $('diaryStars').querySelectorAll('button').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.v, 10) <= pendingRating));
-}));
-$('diaryClose').addEventListener('click', () => { editingDiaryId = null; $('diaryOverlay').classList.remove('show'); });
-$('diarySaveBtn').addEventListener('click', () => {
-  if (!pendingDiary) return;
-  const diary = loadDiary();
-  if (editingDiaryId != null) {
-    const i = diary.findIndex(e => String(e.id) === String(editingDiaryId));
-    if (i >= 0) {
-      diary[i].rating = pendingRating;
-      diary[i].note = $('diaryNote').value.trim();
+
+export function initDiary() {
+  $('diaryCompareBtn').addEventListener('click', () => {
+    const diary = loadDiary();
+    if (diary.length < 2) return;
+    compareMode = !compareMode;
+    compareSelected = [];
+    $('diaryCompareBtn').textContent = compareMode ? t('diaryCompareCancelBtn') : t('diaryCompareBtn');
+    renderDiary();
+  });
+  $('compareClose').addEventListener('click', () => {
+    $('compareOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+  });
+  // ===== Export / import diario =====
+  $('diaryExportBtn').addEventListener('click', () => {
+    const diary = loadDiary();
+    const payload = {
+      app: 'coffee-brew-calc', version: 2, exportedAt: new Date().toISOString(),
+      settings: { roast: state.roast || 'medium', roastDate: state.roastDate || null },
+      diary
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${state.lang === 'en' ? 'coffee-diary' : 'diario-caffe'}-${dateStr}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    showToast(t('diaryExported'));
+  });
+  $('diaryImportBtn').addEventListener('click', () => $('diaryImportFile').click());
+  $('diaryImportFile').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        const incoming = Array.isArray(data) ? data : (Array.isArray(data.diary) ? data.diary : null);
+        if (!incoming) throw new Error('invalid');
+        const existing = loadDiary();
+        const existingIds = new Set(existing.map(x => String(x.id)));
+        let added = 0, skipped = 0;
+        incoming.forEach(raw => {
+          const entry = sanitizeEntry(raw);
+          if (!entry) return;
+          if (raw.id && existingIds.has(String(entry.id))) { skipped++; return; }
+          existing.push(entry);
+          existingIds.add(String(entry.id));
+          added++;
+        });
+        existing.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+        saveDiary(existing);
+        // Ripristina impostazioni tostatura se presenti nel backup (v2)
+        let settingsMsg = '';
+        if (data && data.settings && typeof data.settings === 'object') {
+          if (data.settings.roast && ROAST[data.settings.roast]) state.roast = data.settings.roast;
+          if ('roastDate' in data.settings) {
+            state.roastDate = data.settings.roastDate || null;
+            $('roastDateInput').value = state.roastDate || '';
+          }
+          save(); renderFreshness(); render();
+          settingsMsg = t('diarySettingsRestored');
+        }
+        renderDiary();
+        showToast(t('diaryImported')(added) + (skipped ? t('diaryImportSkipped')(skipped) : '') + settingsMsg);
+      } catch (err) {
+        showToast(t('diaryImportInvalid'));
+      }
+      $('diaryImportFile').value = '';
+    };
+    reader.readAsText(file);
+  });
+  $('repeatLastBtn').addEventListener('click', () => {
+    const diary = loadDiary();
+    if (!diary.length) return;
+    const last = diary[0];
+    if (!METHODS[last.method]) return;
+    state.method = last.method;
+    state.vals[last.method] = { dose: last.dose, ratio: last.ratio };
+    if (last.temp) state.vals[last.method].temp = last.temp;
+    if (last.recipe && RECIPES[last.method] && RECIPES[last.method].find(r => r.id === last.recipe)) state.vals[last.method].recipe = last.recipe;
+    if (METHODS[last.method].coldbrew && last.cbMode) state.cbMode = last.cbMode;
+    save();
+    render();
+    showToast(t('recipeReloaded'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  $('diaryStars').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    pendingRating = parseInt(b.dataset.v, 10);
+    $('diaryStars').querySelectorAll('button').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.v, 10) <= pendingRating));
+  }));
+  $('diaryClose').addEventListener('click', () => { editingDiaryId = null; $('diaryOverlay').classList.remove('show'); });
+  $('diarySaveBtn').addEventListener('click', () => {
+    if (!pendingDiary) return;
+    const diary = loadDiary();
+    if (editingDiaryId != null) {
+      const i = diary.findIndex(e => String(e.id) === String(editingDiaryId));
+      if (i >= 0) {
+        diary[i].rating = pendingRating;
+        diary[i].note = $('diaryNote').value.trim();
+      }
+      saveDiary(diary);
+      renderDiary();
+      $('diaryOverlay').classList.remove('show');
+      showToast(t('diaryUpdated'));
+      editingDiaryId = null;
+      return;
     }
+    const entry = Object.assign({ id: Date.now(), date: new Date().toISOString(), rating: pendingRating, note: $('diaryNote').value.trim() }, pendingDiary);
+    diary.unshift(entry);
     saveDiary(diary);
     renderDiary();
     $('diaryOverlay').classList.remove('show');
-    showToast(t('diaryUpdated'));
-    editingDiaryId = null;
-    return;
-  }
-  const entry = Object.assign({ id: Date.now(), date: new Date().toISOString(), rating: pendingRating, note: $('diaryNote').value.trim() }, pendingDiary);
-  diary.unshift(entry);
-  saveDiary(diary);
-  renderDiary();
-  $('diaryOverlay').classList.remove('show');
-  showToast(t('diarySaved'));
-});
-$('diaryAddBtn').addEventListener('click', () => {
-  const key = state.method, m = METHODS[key], v = getVals(key);
-  const arD = activeRecipe(key);
-  openDiaryForm({ method: key, methodName: m.name, dose: v.dose, water: Math.round(v.dose * v.ratio), ratio: v.ratio, temp: m.temp ? v.temp : undefined, cbMode: m.coldbrew ? state.cbMode : undefined, recipe: arD ? arD.id : undefined, recipeTag: arD ? arD.chip : undefined });
-});
-$('timerSaveDiaryGuided').addEventListener('click', () => { if (timer.snapshot) openDiaryForm(timer.snapshot); });
-$('timerSaveDiaryManual').addEventListener('click', () => { if (timer.snapshot) openDiaryForm(timer.snapshot); });
-$('timerSaveDiaryLongform').addEventListener('click', () => { if (timer.snapshot) openDiaryForm(timer.snapshot); });
+    showToast(t('diarySaved'));
+  });
+  $('diaryAddBtn').addEventListener('click', () => {
+    const key = state.method, m = METHODS[key], v = getVals(key);
+    const arD = activeRecipe(key);
+    openDiaryForm({ method: key, methodName: m.name, dose: v.dose, water: Math.round(v.dose * v.ratio), ratio: v.ratio, temp: m.temp ? v.temp : undefined, cbMode: m.coldbrew ? state.cbMode : undefined, recipe: arD ? arD.id : undefined, recipeTag: arD ? arD.chip : undefined });
+  });
+  $('timerSaveDiaryGuided').addEventListener('click', () => { if (timer.snapshot) openDiaryForm(timer.snapshot); });
+  $('timerSaveDiaryManual').addEventListener('click', () => { if (timer.snapshot) openDiaryForm(timer.snapshot); });
+  $('timerSaveDiaryLongform').addEventListener('click', () => { if (timer.snapshot) openDiaryForm(timer.snapshot); });
+}

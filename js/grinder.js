@@ -1,6 +1,11 @@
+import { METHODS, ORDER } from './data/methods.js';
+import { activeRecipe } from './data/recipes.js';
+import { $, save, state } from './app.js';
+import { showToast } from './share.js';
+
 // ===== Macinini: profili e guida alla macinatura =====
 // Meccanica (click per giro, numeri per giro, µm per click, tipo di regolazione): tabella ufficiale 1zpresso.coffee/grind-setting
-const GRINDERS = {
+export const GRINDERS = {
   xultra: { name: '1Zpresso X-Ultra',  cpr: 60,  npr: 6,  um: 12.5, adj: 'external' },
   xpro:   { name: '1Zpresso X-Pro S',  cpr: 60,  npr: 6,  um: 12.5, adj: 'external' },
   jultra: { name: '1Zpresso J-Ultra',  cpr: 100, npr: 10, um: 8,    adj: 'external' },
@@ -95,14 +100,14 @@ const GSTR = {
     canvasGrinder: 'GRINDER'
   }
 };
-function gt(k) { return GSTR[state.lang === 'en' ? 'en' : 'it'][k]; }
-function gClicksTxt(n) { return n + ' ' + (state.lang === 'en' && n !== 1 ? 'clicks' : 'click'); }
+export function gt(k) { return GSTR[state.lang === 'en' ? 'en' : 'it'][k]; }
+export function gClicksTxt(n) { return n + ' ' + (state.lang === 'en' && n !== 1 ? 'clicks' : 'click'); }
 function gCpn(g) { return g.cpr / g.npr; }
-function gFmtPos(g, c) {
+export function gFmtPos(g, c) {
   const cpn = gCpn(g), rem = c % g.cpr;
   return Math.floor(c / g.cpr) + '.' + Math.floor(rem / cpn) + '.' + (rem % cpn);
 }
-function gParse(g, txt) {
+export function gParse(g, txt) {
   txt = String(txt || '').trim().replace(/,/g, '.');
   if (!txt) return null;
   if (/^\d+$/.test(txt)) { const c = parseInt(txt, 10); return c <= 1000 ? c : null; }
@@ -113,7 +118,7 @@ function gParse(g, txt) {
   return r * g.cpr + n * gCpn(g) + k;
 }
 function gStep(g, um) { return Math.max(1, Math.round(um / g.um)); }
-function gSuggest(gk, key) {
+export function gSuggest(gk, key) {
   const tbl = GRINDER_RANGES[gk] && GRINDER_RANGES[gk][key];
   if (!tbl) return null;
   const m = METHODS[key], ar = activeRecipe(key);
@@ -126,7 +131,7 @@ function gMine(gk, key) {
   const s = state.myGrind && state.myGrind[gk] && state.myGrind[gk][key];
   return typeof s === 'number' ? s : null;
 }
-function grinderSettingFor(key) {
+export function grinderSettingFor(key) {
   const gk = state.grinder;
   if (!gk || !GRINDERS[gk]) return null;
   const mine = gMine(gk, key);
@@ -135,7 +140,7 @@ function grinderSettingFor(key) {
   return s ? { clicks: s.start } : null;
 }
 
-function renderGrinder() {
+export function renderGrinder() {
   const cur = state.grinder && GRINDERS[state.grinder] ? state.grinder : '';
   $('grinderLabel').textContent = gt('label');
   $('grinderGuideTitle').textContent = gt('guideTitle');
@@ -233,7 +238,10 @@ function renderGrinderGuide(cur) {
   h += `<div class="gsources">${gt('sources')}</div>`;
   $('grinderGuideBody').innerHTML = h;
 }
-$('grinderSelect').addEventListener('change', e => {
-  state.grinder = e.target.value || null;
-  save(); renderGrinder();
-});
+
+export function initGrinder() {
+  $('grinderSelect').addEventListener('change', e => {
+    state.grinder = e.target.value || null;
+    save(); renderGrinder();
+  });
+}

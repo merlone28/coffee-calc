@@ -1,3 +1,9 @@
+import { fmt, val2 } from './core.js';
+import { METHODS } from './data/methods.js';
+import { mSpecsOf, mType, t } from './i18n.js';
+import { $, getVals, state } from './app.js';
+import { GRINDERS, gClicksTxt, gFmtPos, grinderSettingFor, gt } from './grinder.js';
+
 // ===== Condivisione ricetta =====
 function buildShareUrl() {
   const key = state.method;
@@ -14,26 +20,13 @@ function buildShareUrl() {
   url.search = params.toString();
   return url.toString();
 }
-function showToast(msg) {
+export function showToast(msg) {
   const el = $('toast');
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(showToast.t);
   showToast.t = setTimeout(() => el.classList.remove('show'), 2500);
 }
-$('shareBtn').addEventListener('click', async () => {
-  const url = buildShareUrl();
-  const m = METHODS[state.method];
-  if (navigator.share) {
-    try { await navigator.share({ title: t('shareTitle'), text: t('shareText')(m.name), url }); return; } catch (e) {}
-  }
-  try {
-    await navigator.clipboard.writeText(url);
-    showToast(t('linkCopied'));
-  } catch (e) {
-    showToast(url);
-  }
-});
 
 // ===== Immagine ricetta condivisibile =====
 function roundRectPath(ctx, x, y, w, h, r) {
@@ -163,4 +156,20 @@ function shareRecipeImage() {
     showToast(t('imgDownloaded'));
   }, 'image/png');
 }
-$('shareImageBtn').addEventListener('click', shareRecipeImage);
+
+export function initShare() {
+  $('shareBtn').addEventListener('click', async () => {
+    const url = buildShareUrl();
+    const m = METHODS[state.method];
+    if (navigator.share) {
+      try { await navigator.share({ title: t('shareTitle'), text: t('shareText')(m.name), url }); return; } catch (e) {}
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast(t('linkCopied'));
+    } catch (e) {
+      showToast(url);
+    }
+  });
+  $('shareImageBtn').addEventListener('click', shareRecipeImage);
+}

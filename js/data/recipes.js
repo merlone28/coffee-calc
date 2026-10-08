@@ -1,5 +1,8 @@
+import { T, W, fmt } from '../core.js';
+import { state } from '../app.js';
+
 // ===== Ricette celebri (fonti: brew guide ufficiali e canali degli autori) =====
-const RECIPES = {
+export const RECIPES = {
   v60: [
     {
       id: 'kasuya46', author: 'Tetsu Kasuya', chip: '4:6 · Kasuya',
@@ -518,7 +521,7 @@ const RECIPES = {
     }
   ]
 };
-function activeRecipe(key) {
+export function activeRecipe(key) {
   const v = state.vals && state.vals[key];
   if (!v || !v.recipe || !RECIPES[key]) return null;
   return RECIPES[key].find(r => r.id === v.recipe) || null;
