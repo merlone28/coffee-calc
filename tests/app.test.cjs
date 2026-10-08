@@ -24,7 +24,7 @@ before(async () => {
     executablePath: process.env.CHROMIUM_PATH || undefined,
     args: ['--no-sandbox']
   });
-  page = await browser.newPage();
+  page = await browser.newPage({ locale: 'it-IT' });
   // L'app è fatta di moduli ES: i test importano le stesse istanze (singleton) usate dalla pagina.
   await page.addInitScript(() => {
     window.__mods = async () => Object.assign({},
@@ -165,4 +165,31 @@ test('asset caricati: font e CSS risolti (nessuna richiesta fallita)', async () 
   await p2.close();
   assert.deepStrictEqual(failed, []);
   assert.ok(loaded >= 1);
+});
+
+test('lingua iniziale: segue il browser alla prima visita, rispetta la scelta salvata', async () => {
+  const run = async (locale, preset) => {
+    const ctx = await browser.newContext({ locale });
+    const pg = await ctx.newPage();
+    if (preset) await pg.addInitScript(p => localStorage.setItem('coffee-brew-calc-v1', JSON.stringify(p)), preset);
+    await pg.goto(base);
+    const r = await pg.evaluate(() => ({ btn: document.getElementById('langBtn').textContent, html: document.documentElement.lang,
+      saved: JSON.parse(localStorage.getItem('coffee-brew-calc-v1') || 'null') }));
+    await ctx.close();
+    return r;
+  };
+  assert.strictEqual((await run('en-US')).btn, 'EN');
+  assert.strictEqual((await run('it-IT')).btn, 'IT');
+  assert.strictEqual((await run('fr-FR')).html, 'en');
+  // scelta già salvata: il browser inglese non la sovrascrive
+  assert.strictEqual((await run('en-US', { method: 'v60', lang: 'it', vals: {} })).btn, 'IT');
+  assert.strictEqual((await run('it-IT', { method: 'v60', lang: 'en', vals: {} })).btn, 'EN');
+});
+
+test('detectLang: prima lingua supportata, altrimenti inglese', async () => {
+  const r = await page.evaluate(async () => {
+    const { detectLang } = await window.__mods();
+    return [detectLang(['it-IT', 'en']), detectLang(['fr-FR', 'it']), detectLang(['EN_gb']), detectLang(['de', 'fr']), detectLang([]), detectLang(undefined)];
+  });
+  assert.deepStrictEqual(r, ['it', 'it', 'en', 'en', 'en', 'en']);
 });

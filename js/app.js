@@ -134,12 +134,25 @@ export function updateRatioVisual(dose, water) {
   $('rvWaterLabel').textContent = `${fmt(water)} g · ${wPct.toFixed(1)}%`;
 }
 
+// Lingua dell'interfaccia dalle preferenze del browser: la prima tra italiano e inglese
+// nell'elenco; se nessuna è supportata, inglese (l'italiano resta il default solo per chi lo chiede).
+export function detectLang(languages) {
+  for (const l of languages || []) {
+    const code = String(l).toLowerCase().split(/[-_]/)[0];
+    if (code === 'it' || code === 'en') return code;
+  }
+  return 'en';
+}
+
 export function initApp() {
   new MutationObserver(syncAria).observe(document.body, { attributes: true, attributeFilter: ['title'], subtree: true });
+  let hasSaved = false;
   try {
     const saved = JSON.parse(localStorage.getItem(LS_KEY));
-    if (saved && METHODS[saved.method]) Object.assign(state, saved);
+    if (saved && METHODS[saved.method]) { Object.assign(state, saved); hasSaved = true; }
   } catch (e) {}
+  // Prima visita: nessuna scelta salvata, quindi si parte dalla lingua del browser
+  if (!hasSaved) state.lang = detectLang(navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]);
   // Ricetta condivisa via link (?m=v60&d=20&r=15&cb=conc)
   try {
     const params = new URLSearchParams(window.location.search);
