@@ -1,4 +1,5 @@
 import { fmt } from './core.js';
+import { isCustom, updateUnitsBtn } from './units.js';
 import { LS_KEY, METHODS, ORDER } from './data/methods.js';
 import { RECIPES } from './data/recipes.js';
 import { t } from './i18n.js';
@@ -47,7 +48,8 @@ export function applyLang() {
   $('waterAlkTitle').textContent = t('waterAlkTitle'); $('waterAlkText').textContent = t('waterAlkText');
   $('waterPhTitle').textContent = t('waterPhTitle'); $('waterPhText').textContent = t('waterPhText');
   $('waterNoteText').textContent = t('waterNoteText');
-  $('footerText').textContent = t('footerText');
+  $('footerText').textContent = t(isCustom() ? 'footerTextConverted' : 'footerText');
+  updateUnitsBtn();
   $('diaryTitle').textContent = t('diaryTitle');
   $('diaryAddBtn').textContent = t('diaryAddBtn');
   $('diaryExportBtn').textContent = t('diaryExportBtn');
@@ -67,7 +69,7 @@ export function applyLang() {
   renderDiary();
 }
 
-export const state = { method: 'v60', cbMode: 'conc', roast: 'medium', lang: 'it', vals: {} };
+export const state = { method: 'v60', cbMode: 'conc', roast: 'medium', lang: 'it', units: { weight: 'g', volume: 'ml', temp: 'c' }, vals: {} };
 
 export function getVals(key) {
   if (!state.vals[key]) {

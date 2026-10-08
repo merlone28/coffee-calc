@@ -2,6 +2,7 @@ import { ICON } from './core.js';
 import { t } from './i18n.js';
 import { $, save, state } from './app.js';
 import { showToast } from './share.js';
+import { convertText } from './units.js';
 
 // ===== Notifiche di sistema =====
 export function updateBellIcon() {
@@ -14,7 +15,7 @@ export function updateBellIcon() {
 }
 export function notifyUser(title, body) {
   if (!('Notification' in window) || Notification.permission !== 'granted' || state.notifyEnabled === false) return;
-  try { new Notification(title, { body }); } catch (e) {}
+  try { new Notification(convertText(title), { body: convertText(body) }); } catch (e) {}
 }
 
 export function initNotify() {

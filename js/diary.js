@@ -6,6 +6,7 @@ import { $, getVals, renderFreshness, save, state } from './app.js';
 import { render } from './render.js';
 import { timer } from './timer.js';
 import { showToast } from './share.js';
+import { massShort } from './units.js';
 
 // ===== Diario infusioni =====
 export const LS_DIARY_KEY = 'coffee-brew-diary-v1';
@@ -208,7 +209,7 @@ function renderRepeatBanner() {
   if (!diary.length) { wrap.classList.add('hidden'); return; }
   const last = diary[0];
   if (!METHODS[last.method]) { wrap.classList.add('hidden'); return; }
-  $('repeatBannerText').innerHTML = `${t('repeatBannerPrefix')} <b>${escapeHtml(last.methodName)}</b> — <b>${fmt(last.dose)}g : ${fmt(last.water)}g</b>`;
+  $('repeatBannerText').innerHTML = `${t('repeatBannerPrefix')} <b>${escapeHtml(last.methodName)}</b> — <b>${massShort(last.dose, fmt)} : ${massShort(last.water, fmt)}</b>`;
   $('repeatLastBtn').textContent = t('repeatLastBtn');
   wrap.classList.remove('hidden');
 }
@@ -219,7 +220,7 @@ function openDiaryForm(prefill, isEdit) {
   pendingRating = isEdit ? (prefill.rating || 0) : 0;
   $('diaryFormTitle').textContent = isEdit ? t('diaryEditTitle') : t('diaryFormTitle');
   const temp = prefill.temp ? ` · ${prefill.temp} °C` : '';
-  $('diaryFormRecipe').textContent = `${prefill.methodName} — ${fmt(prefill.dose)}g : ${fmt(prefill.water)}g (1:${prefill.ratio})${temp}`;
+  $('diaryFormRecipe').textContent = `${prefill.methodName} — ${massShort(prefill.dose, fmt)} : ${massShort(prefill.water, fmt)} (1:${prefill.ratio})${temp}`;
   $('diaryStars').querySelectorAll('button').forEach(b => b.classList.toggle('filled', parseInt(b.dataset.v, 10) <= pendingRating));
   $('diaryNote').value = isEdit ? (prefill.note || '') : '';
   $('diaryOverlay').classList.add('show');

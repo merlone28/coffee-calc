@@ -29,7 +29,7 @@ before(async () => {
   await page.addInitScript(() => {
     window.__mods = async () => Object.assign({},
       await import('/js/core.js'), await import('/js/data/methods.js'), await import('/js/i18n.js'),
-      await import('/js/app.js'), await import('/js/grinder.js'), await import('/js/diary.js'));
+      await import('/js/app.js'), await import('/js/grinder.js'), await import('/js/diary.js'), await import('/js/units.js'));
   });
   page.errors = [];
   page.on('pageerror', e => page.errors.push(e.message));
@@ -40,6 +40,15 @@ after(async () => {
   await browser?.close();
   server?.close();
 });
+
+// Apre la finestra delle unità, applica le scelte (es. { weight: 'oz', temp: 'f' } o 'imperial'/'metric') e la chiude.
+async function setUnits(pg, choice) {
+  await pg.click('#unitsBtn');
+  if (choice === 'imperial') await pg.click('#unitsPresetImperial');
+  else if (choice === 'metric') await pg.click('#unitsPresetMetric');
+  else for (const [k, v] of Object.entries(choice)) await pg.click(`#unitsOverlay [data-k="${k}"][data-v="${v}"]`);
+  await pg.click('#unitsClose');
+}
 
 test('la pagina si carica senza errori JS', () => {
   assert.deepStrictEqual(page.errors, []);
@@ -259,5 +268,171 @@ test('diario: l\'import oltre il limite avvisa quante voci non sono state conser
   assert.match(toast, /5 più vecchi oltre il limite di 100/);
   const stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1')));
   assert.strictEqual(stored.length, 100);
+  await pg.close();
+});
+
+test('unità: convertText converte pesi, volumi e temperature, è idempotente e non tocca i rapporti', async () => {
+  const r = await page.evaluate(async () => {
+    const { convertText, state } = await window.__mods();
+    const out = {};
+    const all = { weight: 'oz', volume: 'floz', temp: 'f' };
+    state.lang = 'en';
+    out.mass = convertText('Pour 60 g of water', all);
+    out.range = convertText('Dose 15–18 g', all);
+    out.ml = convertText('200 ml cups', all);
+    out.temp = convertText('Range 92–96 °C', all);
+    out.single = convertText('at 93 °C', all);
+    out.label = convertText('Coffee (g) / Water (g / ml)', all);
+    out.ratio = convertText('about 60 g/L, 1:15, 12.5 µm, 2:30', all);
+    out.twice = convertText(convertText('60 g at 93 °C', all), all);
+    out.metric = convertText('60 g at 93 °C', { weight: 'g', volume: 'ml', temp: 'c' });
+    // impostazioni indipendenti: solo la temperatura, solo il peso, solo il volume
+    out.onlyTemp = convertText('60 g, 200 ml a 93 °C', { weight: 'g', volume: 'ml', temp: 'f' });
+    out.onlyWeight = convertText('60 g, 200 ml a 93 °C', { weight: 'oz', volume: 'ml', temp: 'c' });
+    out.onlyVolume = convertText('60 g, 200 ml a 93 °C', { weight: 'g', volume: 'floz', temp: 'c' });
+    out.labelG = convertText('Coffee (g)', { weight: 'g', volume: 'ml', temp: 'f' });
+    state.lang = 'it';
+    out.it = convertText('60 g', all);
+    return out;
+  });
+  assert.strictEqual(r.mass, 'Pour 2.12 oz of water');
+  assert.strictEqual(r.range, 'Dose 0.53–0.63 oz');
+  assert.strictEqual(r.ml, '6.76 fl oz cups');
+  assert.strictEqual(r.temp, 'Range 198–205 °F');
+  assert.strictEqual(r.single, 'at 199 °F');
+  assert.strictEqual(r.label, 'Coffee (oz) / Water (oz)');
+  assert.strictEqual(r.ratio, 'about 60 g/L, 1:15, 12.5 µm, 2:30');
+  assert.strictEqual(r.twice, '2.12 oz at 199 °F');
+  assert.strictEqual(r.metric, '60 g at 93 °C');
+  assert.strictEqual(r.it, '2,12 oz');
+  assert.strictEqual(r.onlyTemp, '60 g, 200 ml a 199 °F');
+  assert.strictEqual(r.onlyWeight, '2.12 oz, 200 ml a 93 °C');
+  assert.strictEqual(r.onlyVolume, '60 g, 6.76 fl oz a 93 °C');
+  assert.strictEqual(r.labelG, 'Coffee (g)');
+});
+
+test('unità imperiali: nessuna quantità metrica resta visibile, e tornando a metriche il testo è identico', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  const errs = []; pg.on('pageerror', e => errs.push(e.message));
+  await pg.goto(base);
+  const body = () => pg.evaluate(() => document.body.innerText);
+  const leftovers = txt => (txt.match(/[^\n]*(\d\s?g\b(?![\/\w])|\d\s?ml\b|°\s?C|\(g\)|\(g \/ ml\))[^\n]*/g) || []).map(l => l.trim());
+  const methods = await pg.evaluate(() => [...document.querySelectorAll('#tabs .tab')].map(b => b.dataset.m));
+
+  // istantanea metrica di ogni metodo/ricetta
+  const snap = async () => {
+    const out = {};
+    for (const m of methods) {
+      await pg.click(`#tabs .tab[data-m="${m}"]`);
+      const n = await pg.locator('.recipe-chip').count();
+      for (let i = 0; i < Math.max(n, 1); i++) {
+        if (n) await pg.locator('.recipe-chip').nth(i).click();
+        out[`${m}/${i}`] = await body();
+      }
+    }
+    return out;
+  };
+  const metric = await snap();
+  await setUnits(pg, 'imperial');
+  const imperial = await snap();
+  const bad = Object.entries(imperial).flatMap(([k, txt]) => leftovers(txt).map(l => `${k}: ${l}`));
+  assert.deepStrictEqual(bad, []);
+  assert.match(imperial['v60/0'], /0,71 oz/);
+  assert.match(imperial['v60/0'], /201 °F/);
+
+  // le unità si ricordano dopo il ricaricamento
+  await pg.reload();
+  assert.ok(await pg.evaluate(() => document.getElementById('unitsBtn').classList.contains('on')));
+  assert.match(await pg.inputValue('#doseInput'), /^\d+\.\d+$/);
+
+  // ritorno alle metriche: stesso testo di prima
+  await setUnits(pg, 'metric');
+  assert.ok(await pg.evaluate(() => !document.getElementById('unitsBtn').classList.contains('on')));
+  const back = await snap();
+  assert.deepStrictEqual(Object.keys(back), Object.keys(metric));
+  const diff = Object.keys(metric).filter(k => back[k] !== metric[k]);
+  assert.deepStrictEqual(diff, []);
+  assert.deepStrictEqual(errs, []);
+  await pg.close();
+});
+
+test('unità imperiali: i campi accettano once, i dati restano in grammi, le note non vengono convertite', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  await pg.goto(base);
+  await setUnits(pg, 'imperial');
+  await pg.fill('#doseInput', '1');
+  await pg.dispatchEvent('#doseInput', 'input');
+  const stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-calc-v1')));
+  assert.ok(Math.abs(stored.vals.v60.dose - 28.3495) < 0.01, 'dose salvata in grammi');
+  assert.deepStrictEqual(stored.units, { weight: 'oz', volume: 'floz', temp: 'f' });
+  assert.match(await pg.textContent('#resultBanner'), /1 oz/);
+
+  // diario: la riga è in once, ma la nota dell'utente resta com'è e il dato salvato è metrico
+  await pg.click('#diaryAddBtn');
+  await pg.fill('#diaryNote', 'macinato 20 g a 93 °C');
+  await pg.click('#diarySaveBtn');
+  const item = await pg.textContent('#diaryList .diary-item-recipe');
+  assert.match(item, /oz/);
+  assert.doesNotMatch(item, /\d g\b/);
+  assert.match(await pg.textContent('#diaryList .diary-item-note'), /macinato 20 g a 93 °C/);
+  const entry = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1'))[0]);
+  assert.ok(Math.abs(entry.dose - 28.3495) < 0.01);
+  assert.ok(entry.water > 400 && entry.water < 440);
+  await pg.close();
+});
+
+test('unità imperiali: timer guidato e cold brew mostrano once', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  await pg.goto(base);
+  await setUnits(pg, 'imperial');
+  for (const m of ['v60', 'coldbrew']) {
+    await pg.click(`#tabs .tab[data-m="${m}"]`);
+    await pg.click('#openTimerBtn');
+    const txt = await pg.evaluate(() => document.body.innerText);
+    if (m === 'v60') assert.match(txt, /\d oz/, 'v60: once nel timer');
+    assert.doesNotMatch(txt, /\d\s?g\b(?![\/\w])/, `${m}: grammi nel timer`);
+    assert.doesNotMatch(txt, /°\s?C/, `${m}: °C nel timer`);
+    await pg.click('#timerClose');
+  }
+  await pg.close();
+});
+
+test('unità: di default grammi e °C; le impostazioni si cambiano una per una', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  await pg.goto(base);
+  // default: tutto metrico, nessun salvataggio necessario
+  assert.strictEqual(await pg.inputValue('#doseInput'), '20');
+  assert.match(await pg.textContent('#resultBanner'), /20 g/);
+  assert.match(await pg.textContent('#tempVal'), /°C/);
+  assert.ok(await pg.evaluate(() => !document.getElementById('unitsBtn').classList.contains('on')));
+
+  // solo la temperatura in °F: i grammi restano
+  await setUnits(pg, { temp: 'f' });
+  assert.match(await pg.textContent('#tempVal'), /°F/);
+  assert.match(await pg.textContent('#resultBanner'), /20 g/);
+  assert.strictEqual(await pg.inputValue('#doseInput'), '20');
+  assert.doesNotMatch(await pg.evaluate(() => document.getElementById('mSteps').innerText), /°C/);
+  assert.match(await pg.textContent('#doseLabel'), /\(g\)/);
+
+  // solo il peso in once: la temperatura resta in °F, il volume in ml
+  await setUnits(pg, { weight: 'oz' });
+  assert.match(await pg.textContent('#doseLabel'), /\(oz\)/);
+  assert.match(await pg.textContent('#resultBanner'), /0,71 oz/);
+  assert.match(await pg.textContent('#tempVal'), /°F/);
+
+  // si torna ai grammi mantenendo i °F
+  await setUnits(pg, { weight: 'g' });
+  assert.strictEqual(await pg.inputValue('#doseInput'), '20');
+  assert.match(await pg.textContent('#tempVal'), /°F/);
+  const stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-calc-v1')).units);
+  assert.deepStrictEqual(stored, { weight: 'g', volume: 'ml', temp: 'f' });
+
+  // stato salvato malformato (es. valore vecchio): si torna ai default senza errori
+  await pg.evaluate(() => { const s = JSON.parse(localStorage.getItem('coffee-brew-calc-v1')); s.units = 'imperial'; localStorage.setItem('coffee-brew-calc-v1', JSON.stringify(s)); });
+  const errs = []; pg.on('pageerror', e => errs.push(e.message));
+  await pg.reload();
+  assert.strictEqual(await pg.inputValue('#doseInput'), '20');
+  assert.match(await pg.textContent('#tempVal'), /°C/);
+  assert.deepStrictEqual(errs, []);
   await pg.close();
 });
