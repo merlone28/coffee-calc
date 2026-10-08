@@ -193,3 +193,71 @@ test('detectLang: prima lingua supportata, altrimenti inglese', async () => {
   });
   assert.deepStrictEqual(r, ['it', 'it', 'en', 'en', 'en', 'en']);
 });
+
+test('diario: avviso vicino al limite di 100 voci e quando una voce viene scartata', async () => {
+  const mk = n => Array.from({ length: n }, (_, i) => ({ id: i + 1, date: new Date(2026, 0, 1, 0, i).toISOString(),
+    method: 'v60', methodName: 'Hario V60', dose: 20, water: 300, ratio: 15, rating: 3, note: '' })).reverse();
+  const open = async n => {
+    const pg = await browser.newPage({ locale: 'it-IT' });
+    await pg.addInitScript(d => localStorage.setItem('coffee-brew-diary-v1', JSON.stringify(d)), mk(n));
+    await pg.goto(base);
+    return pg;
+  };
+  const note = pg => pg.evaluate(() => ({ hidden: document.getElementById('diaryLimitNote').classList.contains('hidden'),
+    text: document.getElementById('diaryLimitText').textContent }));
+
+  let pg = await open(89);
+  assert.strictEqual((await note(pg)).hidden, true);
+  await pg.close();
+
+  pg = await open(92);
+  let n = await note(pg);
+  assert.strictEqual(n.hidden, false);
+  assert.match(n.text, /92/);
+  assert.match(n.text, /100/);
+  await pg.close();
+
+  // diario pieno: salvare una nuova voce scarta la più vecchia e lo dice
+  pg = await open(100);
+  n = await note(pg);
+  assert.match(n.text, /pieno/i);
+  await pg.click('#diaryAddBtn');
+  await pg.click('#diarySaveBtn');
+  const toast = await pg.textContent('#toast');
+  assert.match(toast, /eliminata/);
+  const stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1')));
+  assert.strictEqual(stored.length, 100);
+  assert.ok(!stored.some(e => e.id === 1), 'la voce più vecchia (id 1) deve essere stata scartata');
+  await pg.close();
+
+  // sotto il limite: nessun avviso di scarto
+  pg = await open(50);
+  await pg.click('#diaryAddBtn');
+  await pg.click('#diarySaveBtn');
+  assert.doesNotMatch(await pg.textContent('#toast'), /eliminata/);
+  await pg.close();
+
+  // inglese
+  const ctx = await browser.newContext({ locale: 'en-US' });
+  pg = await ctx.newPage();
+  await pg.addInitScript(d => localStorage.setItem('coffee-brew-diary-v1', JSON.stringify(d)), mk(95));
+  await pg.goto(base);
+  assert.match((await note(pg)).text, /keeps the latest 100/);
+  await ctx.close();
+});
+
+test('diario: l\'import oltre il limite avvisa quante voci non sono state conservate', async () => {
+  const entry = i => ({ id: 1000 + i, date: new Date(2026, 5, 1, 0, i).toISOString(), methodName: 'Hario V60', dose: 20, water: 300, ratio: 15 });
+  const existing = Array.from({ length: 95 }, (_, i) => ({ ...entry(i), id: i + 1, date: new Date(2026, 0, 1, 0, i).toISOString() }));
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  await pg.addInitScript(d => localStorage.setItem('coffee-brew-diary-v1', JSON.stringify(d)), existing);
+  await pg.goto(base);
+  const incoming = { diary: Array.from({ length: 10 }, (_, i) => entry(i)) };
+  await pg.setInputFiles('#diaryImportFile', { name: 'b.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(incoming)) });
+  await pg.waitForFunction(() => /importat/.test(document.getElementById('toast').textContent));
+  const toast = await pg.textContent('#toast');
+  assert.match(toast, /5 più vecchi oltre il limite di 100/);
+  const stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1')));
+  assert.strictEqual(stored.length, 100);
+  await pg.close();
+});

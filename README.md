@@ -15,6 +15,7 @@ Web app (PWA) per calcolare dosi, acqua e rapporti di estrazione per sei metodi 
 - **Profili macinino 1Zpresso** (X-Ultra, X-Pro S, J-Ultra, J-Max S, JX-Pro S, K-Ultra, K-Max, Q2/J): click di partenza e range per ogni metodo in formato giri.numero.click (fasce verificate per X-Ultra), possibilità di salvare il proprio setting per metodo
 - **Guida alla macinatura**: come leggere i numeri, taratura dello zero, tabella "nel bicchiere → cosa fare" con i click calcolati sul passo del tuo macinino, consigli per tostatura e freschezza
 - **Linee guida sull'acqua** secondo gli standard SCA: TDS, durezza, alcalinità, pH
+- **Diario delle infusioni** con voti, note, confronto, statistiche e backup JSON (esporta/importa). Conserva le ultime 100 voci: da 90 in su compare un avviso con il pulsante di esportazione, e quando una voce viene scartata (nuova infusione o import) l'app lo dice
 - **Funziona offline** e salva le tue impostazioni sul dispositivo
 - **Italiano e inglese**: alla prima visita la lingua segue il browser (italiano o inglese, altrimenti inglese); il pulsante IT/EN in alto la cambia e la scelta viene ricordata
 

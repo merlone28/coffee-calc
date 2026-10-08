@@ -469,6 +469,7 @@
   }
   .diary-add-btn:hover { border-color: var(--accent); }
   .diary-empty { color: var(--ink-faint); font-size: 0.85rem; line-height: 1.5; }
+  .diary-limit-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; padding: 10px 12px; border: 1px solid var(--accent); border-radius: var(--r-sm); font-size: 0.82rem; line-height: 1.45; color: var(--ink); }
   .diary-list { display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto; padding-right: 2px; }
   .diary-item { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 13px 15px; }
   .diary-item-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
