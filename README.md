@@ -16,6 +16,7 @@ Web app (PWA) per calcolare dosi, acqua e rapporti di estrazione per sei metodi 
 - **Guida alla macinatura**: come leggere i numeri, taratura dello zero, tabella "nel bicchiere → cosa fare" con i click calcolati sul passo del tuo macinino, consigli per tostatura e freschezza
 - **Linee guida sull'acqua** secondo gli standard SCA: TDS, durezza, alcalinità, pH
 - **Funziona offline** e salva le tue impostazioni sul dispositivo
+- **Italiano e inglese**: alla prima visita la lingua segue il browser (italiano o inglese, altrimenti inglese); il pulsante IT/EN in alto la cambia e la scelta viene ricordata
 
 ## Installazione su smartphone
 
