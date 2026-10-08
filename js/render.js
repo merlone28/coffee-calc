@@ -1,4 +1,11 @@
-function render() {
+import { ICON, ROAST, fmt, roastNote, val2 } from './core.js';
+import { METHODS } from './data/methods.js';
+import { RECIPES, activeRecipe } from './data/recipes.js';
+import { mDesc, mHint, mLang, mPresetLabel, mSpecsOf, mType, stepsFor, t } from './i18n.js';
+import { $, applyLang, getVals, renderRoastButtons, renderTabs, save, state, updateRatioVisual } from './app.js';
+import { renderGrinder } from './grinder.js';
+
+export function render() {
   renderTabs();
   renderRoastButtons();
   const key = state.method;
@@ -160,34 +167,6 @@ function buildBanner(m, v, water) {
   return banner;
 }
 
-// Input handlers — bidirectional
-$('doseInput').addEventListener('input', () => {
-  const d = parseFloat($('doseInput').value);
-  if (!d || d <= 0) return;
-  const v = getVals(state.method);
-  v.dose = d;
-  save(); renderOutputs();
-});
-$('waterInput').addEventListener('input', () => {
-  const w = parseFloat($('waterInput').value);
-  if (!w || w <= 0) return;
-  const v = getVals(state.method);
-  v.dose = w / v.ratio;
-  save(); renderOutputs();
-});
-$('ratioSlider').addEventListener('input', () => {
-  const v = getVals(state.method);
-  v.ratio = parseFloat($('ratioSlider').value);
-  // keep dose fixed, recompute water
-  save(); renderOutputs(true);
-});
-$('tempSlider').addEventListener('input', () => {
-  const v = getVals(state.method);
-  v.temp = parseInt($('tempSlider').value, 10);
-  $('tempVal').textContent = v.temp + ' °C';
-  save(); renderOutputs();
-});
-
 // Lighter re-render that doesn't rebuild inputs being typed into
 function renderOutputs(fromSlider) {
   const key = state.method;
@@ -204,21 +183,50 @@ function renderOutputs(fromSlider) {
 }
 
 // Tema chiaro/scuro
-function applyTheme() {
+export function applyTheme() {
   const th = state.theme || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   document.documentElement.dataset.theme = th;
   $('themeBtn').innerHTML = th === 'dark' ? ICON.sun : ICON.moon;
   $('themeBtn').title = t('themeTitle');
 }
-$('themeBtn').addEventListener('click', () => {
-  state.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  save(); applyTheme();
-});
-applyTheme();
 
-// Lingua
-$('langBtn').addEventListener('click', () => {
-  state.lang = state.lang === 'en' ? 'it' : 'en';
-  save();
-  applyLang();
-});
+export function initRender() {
+  // Input handlers — bidirectional
+  $('doseInput').addEventListener('input', () => {
+    const d = parseFloat($('doseInput').value);
+    if (!d || d <= 0) return;
+    const v = getVals(state.method);
+    v.dose = d;
+    save(); renderOutputs();
+  });
+  $('waterInput').addEventListener('input', () => {
+    const w = parseFloat($('waterInput').value);
+    if (!w || w <= 0) return;
+    const v = getVals(state.method);
+    v.dose = w / v.ratio;
+    save(); renderOutputs();
+  });
+  $('ratioSlider').addEventListener('input', () => {
+    const v = getVals(state.method);
+    v.ratio = parseFloat($('ratioSlider').value);
+    // keep dose fixed, recompute water
+    save(); renderOutputs(true);
+  });
+  $('tempSlider').addEventListener('input', () => {
+    const v = getVals(state.method);
+    v.temp = parseInt($('tempSlider').value, 10);
+    $('tempVal').textContent = v.temp + ' °C';
+    save(); renderOutputs();
+  });
+  $('themeBtn').addEventListener('click', () => {
+    state.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    save(); applyTheme();
+  });
+  applyTheme();
+  // Lingua
+  $('langBtn').addEventListener('click', () => {
+    state.lang = state.lang === 'en' ? 'it' : 'en';
+    save();
+    applyLang();
+  });
+}

@@ -1,3 +1,11 @@
+import { fmt } from './core.js';
+import { LS_KEY, METHODS, ORDER } from './data/methods.js';
+import { RECIPES } from './data/recipes.js';
+import { t } from './i18n.js';
+import { applyTheme, render } from './render.js';
+import { updateBellIcon } from './notify.js';
+import { compareMode, renderDiary } from './diary.js';
+
 // Nomi accessibili: data-aria -> aria-label tradotto; title -> aria-label per i pulsanti solo-icona
 function syncAria() {
   document.querySelectorAll('[data-aria]').forEach(el => el.setAttribute('aria-label', t(el.dataset.aria)));
@@ -6,9 +14,8 @@ function syncAria() {
     if (!el.hasAttribute('data-aria') && el.title) el.setAttribute('aria-label', el.title);
   });
 }
-new MutationObserver(syncAria).observe(document.body, { attributes: true, attributeFilter: ['title'], subtree: true });
 
-function applyLang() {
+export function applyLang() {
   document.documentElement.lang = state.lang === 'en' ? 'en' : 'it';
   syncAria();
   document.title = t('appTitle');
@@ -60,41 +67,9 @@ function applyLang() {
   renderDiary();
 }
 
-var state = { method: 'v60', cbMode: 'conc', roast: 'medium', lang: 'it', vals: {} };
-try {
-  const saved = JSON.parse(localStorage.getItem(LS_KEY));
-  if (saved && METHODS[saved.method]) state = Object.assign(state, saved);
-} catch (e) {}
+export const state = { method: 'v60', cbMode: 'conc', roast: 'medium', lang: 'it', vals: {} };
 
-// Ricetta condivisa via link (?m=v60&d=20&r=15&cb=conc)
-try {
-  const params = new URLSearchParams(window.location.search);
-  if (params.has('lang') && (params.get('lang') === 'en' || params.get('lang') === 'it')) {
-    state.lang = params.get('lang');
-  }
-  if (params.has('m') && METHODS[params.get('m')]) {
-    const key = params.get('m');
-    const d = parseFloat(params.get('d'));
-    const r = parseFloat(params.get('r'));
-    state.method = key;
-    if (params.has('cb')) state.cbMode = params.get('cb') === 'rtd' ? 'rtd' : 'conc';
-    state.vals = state.vals || {};
-    state.vals[key] = {
-      dose: d > 0 ? d : METHODS[key].dose,
-      ratio: r > 0 ? r : METHODS[key].ratio
-    };
-    const tw = parseInt(params.get('tw'), 10);
-    if (tw > 0) state.vals[key].temp = tw;
-    const rc = params.get('rc');
-    if (rc && RECIPES[key] && RECIPES[key].find(r => r.id === rc)) state.vals[key].recipe = rc;
-    save();
-    if (window.history && window.history.replaceState) {
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }
-} catch (e) {}
-
-function getVals(key) {
+export function getVals(key) {
   if (!state.vals[key]) {
     const m = METHODS[key];
     let ratio = m.ratio;
@@ -103,11 +78,11 @@ function getVals(key) {
   }
   return state.vals[key];
 }
-function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
+export function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
 
-const $ = id => document.getElementById(id);
+export const $ = id => document.getElementById(id);
 
-function renderTabs() {
+export function renderTabs() {
   $('tabs').innerHTML = ORDER.map(k =>
     `<button class="tab ${k === state.method ? 'active' : ''}" data-m="${k}" role="tab" aria-selected="${k === state.method}">${METHODS[k].name}</button>`
   ).join('');
@@ -116,21 +91,11 @@ function renderTabs() {
   );
 }
 
-function renderRoastButtons() {
+export function renderRoastButtons() {
   document.querySelectorAll('.roast-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.r === (state.roast || 'medium')));
 }
-document.querySelectorAll('.roast-btn').forEach(b => b.addEventListener('click', () => {
-  state.roast = b.dataset.r; save(); render();
-}));
-
-// ===== Data di tostatura e freschezza =====
-if (state.roastDate) $('roastDateInput').value = state.roastDate;
-$('roastDateInput').addEventListener('change', () => {
-  state.roastDate = $('roastDateInput').value || null;
-  save(); renderFreshness();
-});
-function renderFreshness() {
+export function renderFreshness() {
   const el = $('freshnessTip');
   if (!state.roastDate) { el.classList.add('hidden'); return; }
   const roastDate = new Date(state.roastDate + 'T00:00:00');
@@ -156,9 +121,8 @@ function renderFreshness() {
     <div class="fresh-msg">${msg}</div>`;
   el.classList.remove('hidden');
 }
-renderFreshness();
 
-function updateRatioVisual(dose, water) {
+export function updateRatioVisual(dose, water) {
   if (!$('rvCoffee')) return; // barra visuale rimossa dal layout
   const total = dose + water;
   if (!total) return;
@@ -168,4 +132,49 @@ function updateRatioVisual(dose, water) {
   $('rvWater').style.flexBasis = wPct + '%';
   $('rvCoffeeLabel').textContent = `${fmt(dose)} g · ${cPct.toFixed(1)}%`;
   $('rvWaterLabel').textContent = `${fmt(water)} g · ${wPct.toFixed(1)}%`;
+}
+
+export function initApp() {
+  new MutationObserver(syncAria).observe(document.body, { attributes: true, attributeFilter: ['title'], subtree: true });
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_KEY));
+    if (saved && METHODS[saved.method]) Object.assign(state, saved);
+  } catch (e) {}
+  // Ricetta condivisa via link (?m=v60&d=20&r=15&cb=conc)
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('lang') && (params.get('lang') === 'en' || params.get('lang') === 'it')) {
+      state.lang = params.get('lang');
+    }
+    if (params.has('m') && METHODS[params.get('m')]) {
+      const key = params.get('m');
+      const d = parseFloat(params.get('d'));
+      const r = parseFloat(params.get('r'));
+      state.method = key;
+      if (params.has('cb')) state.cbMode = params.get('cb') === 'rtd' ? 'rtd' : 'conc';
+      state.vals = state.vals || {};
+      state.vals[key] = {
+        dose: d > 0 ? d : METHODS[key].dose,
+        ratio: r > 0 ? r : METHODS[key].ratio
+      };
+      const tw = parseInt(params.get('tw'), 10);
+      if (tw > 0) state.vals[key].temp = tw;
+      const rc = params.get('rc');
+      if (rc && RECIPES[key] && RECIPES[key].find(r => r.id === rc)) state.vals[key].recipe = rc;
+      save();
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  } catch (e) {}
+  document.querySelectorAll('.roast-btn').forEach(b => b.addEventListener('click', () => {
+    state.roast = b.dataset.r; save(); render();
+  }));
+  // ===== Data di tostatura e freschezza =====
+  if (state.roastDate) $('roastDateInput').value = state.roastDate;
+  $('roastDateInput').addEventListener('change', () => {
+    state.roastDate = $('roastDateInput').value || null;
+    save(); renderFreshness();
+  });
+  renderFreshness();
 }

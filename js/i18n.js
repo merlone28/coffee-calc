@@ -1,3 +1,8 @@
+import { METHODS } from './data/methods.js';
+import { METHODS_EN } from './data/methods-en.js';
+import { activeRecipe } from './data/recipes.js';
+import { state } from './app.js';
+
 // ===== UI string dictionary (IT / EN) =====
 const STR = {
   it: {
@@ -157,20 +162,20 @@ const STR = {
     localeCode: 'en-US'
   }
 };
-function t(key) { return STR[state.lang === 'en' ? 'en' : 'it'][key]; }
-function mLang() { return state.lang === 'en' ? 'en' : 'it'; }
-function mType(key) { return mLang() === 'en' ? METHODS_EN[key].type : METHODS[key].type; }
-function mDesc(key) { return mLang() === 'en' ? METHODS_EN[key].desc : METHODS[key].desc; }
-function mHint(key) { return mLang() === 'en' ? METHODS_EN[key].hint : METHODS[key].hint; }
-function mSpecsOf(key) { return mLang() === 'en' ? METHODS_EN[key].specs : METHODS[key].specs; }
-function mPresetLabel(key, i) { return mLang() === 'en' ? METHODS_EN[key].presets[i] : METHODS[key].presets[i].label; }
-function mSteps(key, d, w, mode) { return mLang() === 'en' ? METHODS_EN[key].steps(d, w, mode) : METHODS[key].steps(d, w, mode); }
-function stepsFor(key, d, w) {
+export function t(key) { return STR[state.lang === 'en' ? 'en' : 'it'][key]; }
+export function mLang() { return state.lang === 'en' ? 'en' : 'it'; }
+export function mType(key) { return mLang() === 'en' ? METHODS_EN[key].type : METHODS[key].type; }
+export function mDesc(key) { return mLang() === 'en' ? METHODS_EN[key].desc : METHODS[key].desc; }
+export function mHint(key) { return mLang() === 'en' ? METHODS_EN[key].hint : METHODS[key].hint; }
+export function mSpecsOf(key) { return mLang() === 'en' ? METHODS_EN[key].specs : METHODS[key].specs; }
+export function mPresetLabel(key, i) { return mLang() === 'en' ? METHODS_EN[key].presets[i] : METHODS[key].presets[i].label; }
+export function mSteps(key, d, w, mode) { return mLang() === 'en' ? METHODS_EN[key].steps(d, w, mode) : METHODS[key].steps(d, w, mode); }
+export function stepsFor(key, d, w) {
   const rec = activeRecipe(key);
   if (rec) return rec.steps[mLang() === 'en' ? 'en' : 'it'](d, w);
   return mSteps(key, d, w, state.cbMode);
 }
-function mTimerCfg(key, d, w, mode) {
+export function mTimerCfg(key, d, w, mode) {
   const rec = activeRecipe(key);
   if (rec && rec.timer) return rec.timer(d, w, mLang() === 'en');
   const base = METHODS[key].timer(d, w, mode);

@@ -31,21 +31,22 @@ L'app si apre a schermo intero con la propria icona, anche senza connessione.
 Web app statica senza build step e senza dipendenze esterne (font Chakra Petch e JetBrains Mono inclusi in `fonts/`, licenza OFL), stile visivo "Impeccable" con tema chiaro e scuro, con manifest e service worker per l'installazione e l'uso offline. Nessun dato lascia il dispositivo: le impostazioni sono salvate in `localStorage`.
 
 ```
-index.html          struttura della pagina
+index.html          struttura della pagina (carica solo js/main.js)
 css/style.css       stili
+js/main.js          punto d'ingresso: chiama gli init* nell'ordine e fa il primo render
 js/core.js          formattazione, icone SVG
 js/data/            metodi (IT/EN) e ricette celebri
 js/i18n.js          stringhe IT/EN e helper di traduzione
-js/app.js           stato, tab, tostatura/freschezza
+js/app.js           stato, tab, tostatura/freschezza, helper DOM
 js/grinder.js       profili macinino e guida alla macinatura
 js/render.js        render principale, banner, tema
 js/timer.js         timer guidato / manuale / cold brew
 js/notify.js        notifiche  ·  js/share.js  link e immagine
 js/diary.js         diario, confronto, import/export
-js/main.js          avvio  ·  js/sw-register.js  service worker
+js/sw-register.js   registrazione del service worker
 ```
 
-Gli script sono file classici caricati in ordine da `index.html` e condividono lo scope globale (niente import/export): l'ordine dei tag `<script>` conta.
+Il codice è in **moduli ES** nativi (`import`/`export`, nessun bundler). I moduli non fanno nulla al caricamento: i listener e le inizializzazioni stanno nelle funzioni `initApp()`, `initGrinder()`, … chiamate da `main.js`, così i riferimenti circolari tra moduli (render ↔ diario ↔ timer) sono sicuri. Poiché i moduli non si caricano da `file://`, serve un server HTTP (`npm start`).
 
 ## Sviluppo
 

@@ -1,5 +1,7 @@
+import { T, W, fmt } from '../core.js';
+
 // ===== English content for all methods (mirrors METHODS text fields) =====
-const METHODS_EN = {
+export const METHODS_EN = {
   v60: {
     type: 'Pour-over',
     desc: 'Conical pour-over: a clean, bright cup. The classic ratio is 1:15 (≈ 60 g/L).',

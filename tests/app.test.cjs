@@ -25,6 +25,12 @@ before(async () => {
     args: ['--no-sandbox']
   });
   page = await browser.newPage();
+  // L'app è fatta di moduli ES: i test importano le stesse istanze (singleton) usate dalla pagina.
+  await page.addInitScript(() => {
+    window.__mods = async () => Object.assign({},
+      await import('/js/core.js'), await import('/js/data/methods.js'), await import('/js/i18n.js'),
+      await import('/js/app.js'), await import('/js/grinder.js'), await import('/js/diary.js'));
+  });
   page.errors = [];
   page.on('pageerror', e => page.errors.push(e.message));
   await page.goto(base);
@@ -40,13 +46,14 @@ test('la pagina si carica senza errori JS', () => {
 });
 
 test('ogni metodo: rapporto di default nel range, dose valida', async () => {
-  const bad = await page.evaluate(() => Object.entries(METHODS).filter(([k, m]) =>
-    !(m.dose > 0 && m.ratio >= m.min && m.ratio <= m.max)).map(([k]) => k));
+  const bad = await page.evaluate(async () => { const { METHODS } = await window.__mods(); return Object.entries(METHODS).filter(([k, m]) =>
+    !(m.dose > 0 && m.ratio >= m.min && m.ratio <= m.max)).map(([k]) => k); });
   assert.deepStrictEqual(bad, []);
 });
 
 test('procedure e timer: nessun NaN/undefined, tempi crescenti (IT e EN)', async () => {
-  const problems = await page.evaluate(() => {
+  const problems = await page.evaluate(async () => {
+    const { METHODS, state, mSteps, mTimerCfg } = await window.__mods();
     const out = [];
     for (const lang of ['it', 'en']) {
       state.lang = lang;
@@ -76,7 +83,8 @@ test('procedure e timer: nessun NaN/undefined, tempi crescenti (IT e EN)', async
 });
 
 test('macinini: start dentro il range, formato giri.numero.click reversibile', async () => {
-  const problems = await page.evaluate(() => {
+  const problems = await page.evaluate(async () => {
+    const { METHODS, GRINDERS, gSuggest, gParse, gFmtPos } = await window.__mods();
     const out = [];
     for (const [gk, g] of Object.entries(GRINDERS)) {
       for (const key of Object.keys(METHODS)) {
@@ -94,13 +102,13 @@ test('macinini: start dentro il range, formato giri.numero.click reversibile', a
 });
 
 test('sanitizeEntry: scarta voci invalide e limita i range', async () => {
-  const r = await page.evaluate(() => ({
+  const r = await page.evaluate(async () => { const { sanitizeEntry } = await window.__mods(); return ({
     noMethod: sanitizeEntry({ dose: 18, water: 270, ratio: 15 }),
     negDose: sanitizeEntry({ methodName: 'x', dose: -1, water: 1, ratio: 1 }),
     huge: sanitizeEntry({ methodName: 'x', dose: 18, water: 270, ratio: 15, rating: 1e9 }),
     evil: sanitizeEntry({ methodName: 'ok', dose: 18, water: 270, ratio: 15, id: 'a"><script>', temp: '<b>', extra: 1 }),
     good: sanitizeEntry({ methodName: 'V60', dose: 18, water: 270, ratio: 15, rating: 4, temp: 93, id: 7, date: '2026-01-02T00:00:00Z', method: 'v60' })
-  }));
+  }); });
   assert.strictEqual(r.noMethod, null);
   assert.strictEqual(r.negDose, null);
   assert.strictEqual(r.huge.rating, 0);
@@ -115,7 +123,7 @@ test('sanitizeEntry: scarta voci invalide e limita i range', async () => {
 test('import del diario: HTML iniettato non viene eseguito né inserito', async () => {
   const payload = { diary: [{ methodName: '<img src=x onerror="window.__xss=1">', dose: 18, water: 270, ratio: 15,
     rating: 3, id: '1" onmouseover="window.__xss=1', temp: '<img src=x onerror="window.__xss=1">' }] };
-  await page.evaluate(() => localStorage.removeItem(LS_DIARY_KEY));
+  await page.evaluate(() => localStorage.removeItem('coffee-brew-diary-v1'));
   await page.reload();
   await page.setInputFiles('#diaryImportFile', { name: 'b.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(payload)) });
   await page.waitForTimeout(300);

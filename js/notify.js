@@ -1,5 +1,10 @@
+import { ICON } from './core.js';
+import { t } from './i18n.js';
+import { $, save, state } from './app.js';
+import { showToast } from './share.js';
+
 // ===== Notifiche di sistema =====
-function updateBellIcon() {
+export function updateBellIcon() {
   const btn = $('notifyBtn');
   if (!('Notification' in window)) { btn.style.display = 'none'; return; }
   const enabled = state.notifyEnabled !== false && Notification.permission === 'granted';
@@ -7,22 +12,25 @@ function updateBellIcon() {
   btn.style.opacity = enabled ? '' : '.55';
   btn.title = enabled ? t('notifyOn') : t('notifyOff');
 }
-$('notifyBtn').addEventListener('click', async () => {
-  if (!('Notification' in window)) return;
-  if (Notification.permission === 'granted') {
-    state.notifyEnabled = state.notifyEnabled === false;
-  } else if (Notification.permission !== 'denied') {
-    try {
-      const perm = await Notification.requestPermission();
-      state.notifyEnabled = perm === 'granted';
-    } catch (e) {}
-  } else {
-    showToast(t('notifyBlocked'));
-  }
-  save(); updateBellIcon();
-});
-function notifyUser(title, body) {
+export function notifyUser(title, body) {
   if (!('Notification' in window) || Notification.permission !== 'granted' || state.notifyEnabled === false) return;
   try { new Notification(title, { body }); } catch (e) {}
 }
-updateBellIcon();
+
+export function initNotify() {
+  $('notifyBtn').addEventListener('click', async () => {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      state.notifyEnabled = state.notifyEnabled === false;
+    } else if (Notification.permission !== 'denied') {
+      try {
+        const perm = await Notification.requestPermission();
+        state.notifyEnabled = perm === 'granted';
+      } catch (e) {}
+    } else {
+      showToast(t('notifyBlocked'));
+    }
+    save(); updateBellIcon();
+  });
+  updateBellIcon();
+}

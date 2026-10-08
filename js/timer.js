@@ -1,7 +1,14 @@
+import { ICON } from './core.js';
+import { METHODS } from './data/methods.js';
+import { activeRecipe } from './data/recipes.js';
+import { mTimerCfg, t } from './i18n.js';
+import { $, getVals, state } from './app.js';
+import { notifyUser } from './notify.js';
+
 // ===== Timer guidato =====
 const LS_TIMER_KEY = 'coffee-timer-coldbrew-v1';
 const RING_C = 565.48;
-let timer = { type: null, intervalId: null, cbInterval: null, wakeLock: null };
+export let timer = { type: null, intervalId: null, cbInterval: null, wakeLock: null };
 
 function fmtTime(s) {
   s = Math.max(0, Math.round(s));
@@ -122,32 +129,6 @@ function finishGuided() {
   notifyUser(t('notifExtractionTitle'), t('notifExtractionBody')(timer.snapshot ? timer.snapshot.methodName : t('yourCoffee')));
   unlockWake();
 }
-$('timerPlayPause').addEventListener('click', () => {
-  if (timer.type !== 'guided') return;
-  if (timer.paused) {
-    timer.paused = false; timer.startTs = Date.now();
-    timer.intervalId = setInterval(tickGuided, 200);
-    $('timerPlayPause').innerHTML = ICON.pause;
-  } else {
-    timer.pausedElapsed = guidedElapsed(); timer.paused = true;
-    if (timer.intervalId) { clearInterval(timer.intervalId); timer.intervalId = null; }
-    $('timerPlayPause').innerHTML = ICON.play;
-  }
-});
-$('timerRestart').addEventListener('click', () => {
-  if (timer.type !== 'guided') return;
-  timer.startTs = Date.now(); timer.pausedElapsed = 0; timer.paused = false; timer.currentIdx = -1;
-  $('timerPlayPause').innerHTML = ICON.pause;
-  if (!timer.intervalId) timer.intervalId = setInterval(tickGuided, 200);
-  tickGuided();
-});
-$('timerSkip').addEventListener('click', () => {
-  if (timer.type !== 'guided') return;
-  const nextIdx = timer.currentIdx + 1;
-  const targetAt = nextIdx < timer.steps.length ? timer.steps[nextIdx].at : timer.total;
-  timer.pausedElapsed = targetAt; timer.startTs = Date.now();
-  tickGuided();
-});
 
 // --- Manuale (moka: cronometro + step a mano) ---
 function tickManual() {
@@ -162,22 +143,6 @@ function renderManualStep() {
   $('timerNextStep').classList.remove('hidden');
   $('timerSaveDiaryManual').classList.add('hidden');
 }
-$('timerPrevStep').addEventListener('click', () => {
-  if (timer.type !== 'manual' || timer.currentIdx <= 0) return;
-  timer.currentIdx--; renderManualStep();
-});
-$('timerNextStep').addEventListener('click', () => {
-  if (timer.type !== 'manual') return;
-  if (timer.currentIdx < timer.steps.length - 1) { timer.currentIdx++; buzz(100); renderManualStep(); }
-  else {
-    beep(1200, 150); buzz([150, 80, 200]);
-    $('timerManualTitle').textContent = t('timerDone');
-    $('timerManualCount').textContent = t('manualDone');
-    $('timerNextStep').classList.add('hidden');
-    $('timerSaveDiaryManual').classList.remove('hidden');
-    notifyUser(t('notifMokaTitle'), t('notifMokaBody'));
-  }
-});
 
 // --- Longform (cold brew) ---
 function loadColdbrewTimer() {
@@ -209,18 +174,62 @@ function showLongformActive(s) {
   tickLong();
   timer.cbInterval = setInterval(tickLong, 30000);
 }
-$('timerLongformStart').addEventListener('click', () => {
-  const start = Date.now(), end = start + timer.hours * 3600 * 1000;
-  const s = { start, end, hours: timer.hours, dose: timer.dose, water: timer.water };
-  saveColdbrewTimer(s);
-  showLongformActive(s);
-});
-$('timerLongformReset').addEventListener('click', () => {
-  clearColdbrewTimer();
-  if (timer.cbInterval) { clearInterval(timer.cbInterval); timer.cbInterval = null; }
-  $('timerLongformIdle').classList.remove('hidden');
-  $('timerLongformActive').classList.add('hidden');
-});
 
-$('openTimerBtn').addEventListener('click', openTimer);
-$('timerClose').addEventListener('click', closeTimer);
+export function initTimer() {
+  $('timerPlayPause').addEventListener('click', () => {
+    if (timer.type !== 'guided') return;
+    if (timer.paused) {
+      timer.paused = false; timer.startTs = Date.now();
+      timer.intervalId = setInterval(tickGuided, 200);
+      $('timerPlayPause').innerHTML = ICON.pause;
+    } else {
+      timer.pausedElapsed = guidedElapsed(); timer.paused = true;
+      if (timer.intervalId) { clearInterval(timer.intervalId); timer.intervalId = null; }
+      $('timerPlayPause').innerHTML = ICON.play;
+    }
+  });
+  $('timerRestart').addEventListener('click', () => {
+    if (timer.type !== 'guided') return;
+    timer.startTs = Date.now(); timer.pausedElapsed = 0; timer.paused = false; timer.currentIdx = -1;
+    $('timerPlayPause').innerHTML = ICON.pause;
+    if (!timer.intervalId) timer.intervalId = setInterval(tickGuided, 200);
+    tickGuided();
+  });
+  $('timerSkip').addEventListener('click', () => {
+    if (timer.type !== 'guided') return;
+    const nextIdx = timer.currentIdx + 1;
+    const targetAt = nextIdx < timer.steps.length ? timer.steps[nextIdx].at : timer.total;
+    timer.pausedElapsed = targetAt; timer.startTs = Date.now();
+    tickGuided();
+  });
+  $('timerPrevStep').addEventListener('click', () => {
+    if (timer.type !== 'manual' || timer.currentIdx <= 0) return;
+    timer.currentIdx--; renderManualStep();
+  });
+  $('timerNextStep').addEventListener('click', () => {
+    if (timer.type !== 'manual') return;
+    if (timer.currentIdx < timer.steps.length - 1) { timer.currentIdx++; buzz(100); renderManualStep(); }
+    else {
+      beep(1200, 150); buzz([150, 80, 200]);
+      $('timerManualTitle').textContent = t('timerDone');
+      $('timerManualCount').textContent = t('manualDone');
+      $('timerNextStep').classList.add('hidden');
+      $('timerSaveDiaryManual').classList.remove('hidden');
+      notifyUser(t('notifMokaTitle'), t('notifMokaBody'));
+    }
+  });
+  $('timerLongformStart').addEventListener('click', () => {
+    const start = Date.now(), end = start + timer.hours * 3600 * 1000;
+    const s = { start, end, hours: timer.hours, dose: timer.dose, water: timer.water };
+    saveColdbrewTimer(s);
+    showLongformActive(s);
+  });
+  $('timerLongformReset').addEventListener('click', () => {
+    clearColdbrewTimer();
+    if (timer.cbInterval) { clearInterval(timer.cbInterval); timer.cbInterval = null; }
+    $('timerLongformIdle').classList.remove('hidden');
+    $('timerLongformActive').classList.add('hidden');
+  });
+  $('openTimerBtn').addEventListener('click', openTimer);
+  $('timerClose').addEventListener('click', closeTimer);
+}
