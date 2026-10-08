@@ -7,6 +7,7 @@ import { initShare } from './share.js';
 import { initDiary, renderDiary, startDiary } from './diary.js';
 import { initUnits } from './units.js';
 import { initInsights } from './insights.js';
+import { initDiaryShare, receiveSharedBackup } from './diary-share.js';
 import './sw-register.js';
 
 async function start() {
@@ -20,9 +21,11 @@ async function start() {
   initDiary();
   initUnits();
   initInsights();
+  initDiaryShare();
   renderDiary();
   render();
   applyLang();
+  await receiveSharedBackup();   // se l'app è stata aperta da "Condividi con..."
   document.documentElement.dataset.ready = '1';
 }
 start();

@@ -111,7 +111,7 @@
   /* ---------- Unità di misura ---------- */
   .units-form { display: flex; flex-direction: column; gap: 18px; width: min(420px, 100%); margin-top: 8px; }
   .units-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .units-presets { display: flex; gap: 8px; flex-wrap: wrap; }
+  .units-presets { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: center; margin-top: 10px; }
   .units-note { text-align: left; color: var(--ink-soft); font-size: 0.8rem; line-height: 1.5; margin: 0; }
 
   /* ---------- Roast selector ---------- */

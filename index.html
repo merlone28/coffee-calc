@@ -162,6 +162,7 @@
   <div class="diary-actions" id="diaryActions">
     <button class="diary-action-btn" id="diaryCompareBtn">Confronta</button>
     <button class="diary-action-btn" id="diaryExportBtn">Esporta</button>
+    <button class="diary-action-btn hidden" id="diaryShareBtn">Condividi</button>
     <button class="diary-action-btn" id="diaryImportBtn">Importa</button>
     <input type="file" id="diaryImportFile" accept="application/json" class="hidden">
   </div>
@@ -208,6 +209,16 @@
   <textarea id="diaryNote" class="diary-note" placeholder="Note di gusto (opzionale): troppo acido, amaro, equilibrato..."></textarea>
   <div class="timer-controls">
     <button class="timer-main-btn timer-start-btn" id="diarySaveBtn">Salva</button>
+  </div>
+</div>
+
+<div class="timer-overlay diary-overlay" id="sharedOverlay" role="dialog" aria-labelledby="sharedTitleText">
+  <button class="timer-close" id="sharedClose" data-aria="ariaClose"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  <div class="timer-method" id="sharedTitleText">Backup ricevuto</div>
+  <p class="units-note" id="sharedSummary"></p>
+  <div class="units-presets">
+    <button type="button" class="timer-main-btn timer-start-btn" id="sharedConfirm"></button>
+    <button type="button" class="diary-action-btn" id="sharedCancel"></button>
   </div>
 </div>
 

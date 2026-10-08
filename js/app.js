@@ -59,6 +59,7 @@ export function applyLang() {
   $('diaryFormTitle').textContent = t('diaryFormTitle');
   $('diaryNote').placeholder = t('diaryNotePlaceholder');
   $('insightsTitle').textContent = t('insTitle');
+  $('diaryShareBtn').textContent = t('diaryShareBtn');
   $('diarySaveBtn').textContent = t('diarySaveBtn');
   $('compareTitle').textContent = t('compareTitle');
   $('timerLongformStart').textContent = t('timerLongformStartBtn');

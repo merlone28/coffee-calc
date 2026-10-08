@@ -31,7 +31,7 @@ before(async () => {
   await page.addInitScript(() => {
     window.__mods = async () => Object.assign({},
       await import('/js/core.js'), await import('/js/data/methods.js'), await import('/js/i18n.js'),
-      await import('/js/app.js'), await import('/js/grinder.js'), await import('/js/diary.js'), await import('/js/units.js'), await import('/js/extraction.js'), await import('/js/insights.js'));
+      await import('/js/app.js'), await import('/js/grinder.js'), await import('/js/diary.js'), await import('/js/units.js'), await import('/js/extraction.js'), await import('/js/insights.js'), await import('/js/diary-sync.js'));
   });
   page.errors = [];
   page.on('pageerror', e => page.errors.push(e.message));
@@ -819,4 +819,181 @@ test('andamento: stati vuoti, colori del tema e nessuna conversione di unità su
   await setUnits(pg, 'imperial');
   assert.strictEqual(await pg.textContent('#insightsBody'), before);
   await pg.close();
+});
+
+// ----- Condivisione del diario tra dispositivi -----
+test('condivisione: unione di due diari, lettura e nome del backup', async () => {
+  const r = await page.evaluate(async () => {
+    const { mergeDiaries, parseBackup, buildBackup, backupFileName, sanitizeEntry } = await window.__mods();
+    const e = (id, extra = {}) => ({ id, date: new Date(2026, 0, id).toISOString(), method: 'v60', methodName: 'Hario V60', dose: 20, water: 300, ratio: 15, rating: 3, note: 'a', ...extra });
+    const mine = [e(3, { note: 'mia', updated: 1000 }), e(2), e(1)];
+    const theirs = [e(3, { note: 'sua, più recente', updated: 2000 }), e(2, { note: 'diversa ma non più recente' }), e(4), { methodName: '', dose: 1 }, e(5, { id: undefined })];
+    const m = mergeDiaries(mine, theirs, sanitizeEntry);
+    const older = mergeDiaries([e(3, { note: 'mia', updated: 5000 })], [e(3, { note: 'vecchia', updated: 1000 })], sanitizeEntry);
+    return {
+      counts: [m.added, m.updated, m.unchanged, m.invalid],
+      notes: Object.fromEntries(m.merged.map(x => [x.id, x.note])),
+      order: m.merged.slice(0, 2).map(x => x.id),
+      mineUntouched: mine[0].note,
+      olderKept: older.merged[0].note,
+      parseArray: parseBackup(JSON.stringify([e(1)])).incoming.length,
+      parseObj: parseBackup(JSON.stringify({ diary: [e(1), e(2)], settings: { roast: 'dark' } })),
+      invalid: ['{"a":1}', 'non json', '"testo"'].map(t => { try { parseBackup(t); return 'ok'; } catch (err) { return 'errore'; } }),
+      backup: buildBackup([e(1)], { roast: 'light' }, new Date('2026-03-04T10:00:00Z')),
+      names: [backupFileName('it', new Date('2026-03-04T10:00:00Z')), backupFileName('en', new Date('2026-03-04T10:00:00Z'))]
+    };
+  });
+  assert.deepStrictEqual(r.counts, [2, 1, 1, 1], 'aggiunte (id 4 e quella senza id), 1 aggiornata, 1 invariata, 1 non valida');
+  assert.strictEqual(r.notes[3], 'sua, più recente');
+  assert.strictEqual(r.notes[2], 'a', 'una copia non più recente non sovrascrive');
+  assert.strictEqual(r.mineUntouched, 'mia', 'il diario di partenza non viene modificato sul posto');
+  assert.strictEqual(r.olderKept, 'mia');
+  assert.strictEqual(r.parseArray, 1);
+  assert.strictEqual(r.parseObj.incoming.length, 2);
+  assert.strictEqual(r.parseObj.settings.roast, 'dark');
+  assert.deepStrictEqual(r.invalid, ['errore', 'errore', 'errore']);
+  assert.strictEqual(r.backup.app, 'coffee-brew-calc');
+  assert.deepStrictEqual(r.names, ['diario-caffe-2026-03-04.json', 'coffee-diary-2026-03-04.json']);
+});
+
+test('condivisione: una modifica segna `updated` e l\'import la propaga all\'altro dispositivo', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  await seedLegacy(pg, mkEntries(2));
+  await go(pg);
+  const before = Date.now();
+  await pg.locator('#diaryList .diary-edit').first().click();
+  await pg.fill('#diaryNote', 'modificata qui');
+  await pg.click('#diarySaveBtn');
+  const edited = (await readDiaryDB(pg)).find(e => e.note === 'modificata qui');
+  assert.ok(edited.updated >= before, 'la modifica registra la data di aggiornamento');
+
+  // un file con la stessa voce più recente la aggiorna; una più vecchia non la tocca
+  const base1 = { ...edited };
+  const newer = { diary: [{ ...base1, note: 'modificata altrove', updated: edited.updated + 1000 }] };
+  await pg.setInputFiles('#diaryImportFile', { name: 'b.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(newer)) });
+  await pg.waitForFunction(() => /aggiornat/.test(document.getElementById('toast').textContent));
+  assert.ok((await readDiaryDB(pg)).some(e => e.note === 'modificata altrove'));
+  const older = { diary: [{ ...base1, note: 'vecchia', updated: 1 }] };
+  await pg.setInputFiles('#diaryImportFile', { name: 'c.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(older)) });
+  await pg.waitForFunction(() => /già presente/.test(document.getElementById('toast').textContent));
+  assert.ok((await readDiaryDB(pg)).some(e => e.note === 'modificata altrove'), 'la copia più vecchia non sovrascrive');
+  await pg.close();
+});
+
+test('condivisione: il pulsante usa il foglio di condivisione del sistema e ripiega sul file', async () => {
+  // senza supporto ai file il pulsante non c'è (c'è già "Esporta")
+  const plain = await browser.newPage({ locale: 'it-IT' });
+  await plain.addInitScript(() => { delete Navigator.prototype.share; delete Navigator.prototype.canShare; });
+  await go(plain);
+  assert.ok(await plain.evaluate(() => document.getElementById('diaryShareBtn').classList.contains('hidden')));
+  await plain.close();
+
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  await pg.addInitScript(() => {
+    window.__shares = [];
+    window.__shareMode = 'ok';
+    Navigator.prototype.canShare = () => true;
+    Navigator.prototype.share = async function (data) {
+      window.__shares.push({ name: data.files[0].name, type: data.files[0].type, text: await data.files[0].text(), title: data.title });
+      if (window.__shareMode === 'abort') throw new DOMException('annullato', 'AbortError');
+      if (window.__shareMode === 'fail') throw new DOMException('non permesso', 'NotAllowedError');
+    };
+  });
+  await seedLegacy(pg, mkEntries(3));
+  await go(pg);
+  assert.ok(await pg.evaluate(() => !document.getElementById('diaryShareBtn').classList.contains('hidden')));
+
+  await pg.click('#diaryShareBtn');
+  await pg.waitForFunction(() => window.__shares.length === 1);
+  const sent = await pg.evaluate(() => window.__shares[0]);
+  assert.match(sent.name, /^diario-caffe-\d{4}-\d{2}-\d{2}\.json$/);
+  assert.strictEqual(sent.type, 'application/json');
+  assert.strictEqual(JSON.parse(sent.text).diary.length, 3);
+  assert.match(await pg.textContent('#toast'), /Diario condiviso/);
+
+  // l'utente chiude il foglio: nessun messaggio d'errore, nessun download
+  await pg.evaluate(() => { window.__shareMode = 'abort'; document.getElementById('toast').textContent = ''; });
+  let downloads = 0; pg.on('download', () => downloads++);
+  await pg.click('#diaryShareBtn');
+  await pg.waitForFunction(() => window.__shares.length === 2);
+  await pg.waitForTimeout(200);
+  assert.strictEqual(downloads, 0);
+  assert.strictEqual(await pg.textContent('#toast'), '');
+
+  // il sistema rifiuta: si scarica il file
+  await pg.evaluate(() => { window.__shareMode = 'fail'; });
+  const dl = pg.waitForEvent('download');
+  await pg.click('#diaryShareBtn');
+  assert.match((await dl).suggestedFilename(), /^diario-caffe-.*\.json$/);
+  await pg.close();
+});
+
+test('condivisione: l\'app è una destinazione di "Condividi" e chiede conferma prima di unire il file ricevuto', async () => {
+  const man = await (await fetch(base + 'manifest.json')).json();
+  assert.strictEqual(man.share_target.method, 'POST');
+  assert.strictEqual(man.share_target.enctype, 'multipart/form-data');
+  assert.strictEqual(man.share_target.params.files[0].name, 'backup');
+
+  const ctx = await browser.newContext({ locale: 'it-IT' });
+  const pg = await ctx.newPage();
+  const errs = []; pg.on('pageerror', e => errs.push(e.message));
+  await seedLegacy(pg, mkEntries(2));
+  await go(pg);
+  await pg.evaluate(() => navigator.serviceWorker.ready);
+  await pg.waitForFunction(() => navigator.serviceWorker.controller);
+
+  // il sistema invia il file con una POST: il service worker lo tiene da parte e rimanda all'app
+  const incoming = { app: 'coffee-brew-calc', version: 2, settings: { roast: 'dark', roastDate: null }, diary: [...mkEntries(2), ...mkEntries(2, 10).map(e => ({ ...e, note: 'dall\'altro telefono' }))] };
+  const post = await pg.evaluate(async (json) => {
+    const fd = new FormData();
+    fd.append('backup', new File([json], 'diario.json', { type: 'application/json' }));
+    const r = await fetch('./share-target', { method: 'POST', body: fd, redirect: 'manual' });
+    const kept = await (await caches.open('coffee-calc-share')).keys();
+    return { type: r.type, kept: kept.length };
+  }, JSON.stringify(incoming));
+  assert.strictEqual(post.type, 'opaqueredirect', 'risponde con un reindirizzamento');
+  assert.strictEqual(post.kept, 1, 'il file ricevuto è custodito dal service worker');
+
+  // si annulla: il diario non cambia e il parametro sparisce dall'indirizzo
+  await pg.goto(base + '?shared=1');
+  await pg.waitForSelector('html[data-ready]', { state: 'attached' });
+  assert.ok(await pg.isVisible('#sharedOverlay'));
+  assert.match(await pg.textContent('#sharedSummary'), /2 infusioni nuove/);
+  assert.match(await pg.textContent('#sharedSummary'), /2 già presenti/);
+  assert.ok(!new URL(pg.url()).search.includes('shared'));
+  await pg.click('#sharedCancel');
+  assert.ok(!(await pg.isVisible('#sharedOverlay')));
+  assert.strictEqual((await readDiaryDB(pg)).length, 2);
+
+  // il file era stato consumato: riaprire ?shared=1 non ripropone nulla
+  await pg.goto(base + '?shared=1');
+  await pg.waitForSelector('html[data-ready]', { state: 'attached' });
+  assert.ok(!(await pg.isVisible('#sharedOverlay')));
+  assert.match(await pg.textContent('#toast'), /Nessun backup ricevuto/);
+
+  // di nuovo il file, questa volta si conferma: le voci si uniscono e le impostazioni si ripristinano
+  await pg.evaluate(async (json) => {
+    const fd = new FormData(); fd.append('backup', new File([json], 'diario.json', { type: 'application/json' }));
+    await fetch('./share-target', { method: 'POST', body: fd });
+  }, JSON.stringify(incoming));
+  await pg.goto(base + '?shared=1');
+  await pg.waitForSelector('html[data-ready]', { state: 'attached' });
+  await pg.click('#sharedConfirm');
+  await pg.waitForFunction(() => /importat/.test(document.getElementById('toast').textContent));
+  const all = await readDiaryDB(pg);
+  assert.strictEqual(all.length, 4);
+  assert.ok(all.some(e => e.note === 'dall\'altro telefono'));
+  assert.strictEqual(await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-calc-v1')).roast), 'dark');
+
+  // un file non valido non cambia nulla e lo dice
+  await pg.evaluate(async () => {
+    const fd = new FormData(); fd.append('backup', new File(['questo non è un diario'], 'x.json', { type: 'application/json' }));
+    await fetch('./share-target', { method: 'POST', body: fd });
+  });
+  await pg.goto(base + '?shared=1');
+  await pg.waitForSelector('html[data-ready]', { state: 'attached' });
+  assert.match(await pg.textContent('#toast'), /File non valido/);
+  assert.strictEqual((await readDiaryDB(pg)).length, 4);
+  assert.deepStrictEqual(errs, []);
+  await ctx.close();
 });
