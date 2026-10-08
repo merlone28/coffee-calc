@@ -6,6 +6,7 @@ import { initNotify } from './notify.js';
 import { initShare } from './share.js';
 import { initDiary, renderDiary, startDiary } from './diary.js';
 import { initUnits } from './units.js';
+import { initInsights } from './insights.js';
 import './sw-register.js';
 
 async function start() {
@@ -18,6 +19,7 @@ async function start() {
   initShare();
   initDiary();
   initUnits();
+  initInsights();
   renderDiary();
   render();
   applyLang();

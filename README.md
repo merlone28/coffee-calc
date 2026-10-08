@@ -17,6 +17,7 @@ Web app (PWA) per calcolare dosi, acqua e rapporti di estrazione per sei metodi 
 - **Linee guida sull'acqua** secondo gli standard SCA: TDS, durezza, alcalinità, pH
 - **Diario delle infusioni** con voti, note, confronto, statistiche e backup JSON (esporta/importa). Salvato in IndexedDB, senza limite di voci (l'elenco mostra 50 voci alla volta); il vecchio diario in `localStorage` viene migrato automaticamente alla prima apertura. Se il browser non offre IndexedDB si ricade su `localStorage` e l'app avvisa di esportare un backup spesso
 - **TDS ed EY**: nel diario puoi annotare il TDS misurato col rifrattometro e il peso della bevanda; l'app calcola la resa di estrazione (EY = TDS × bevanda / caffè) e la confronta con l'intervallo SCA 18–22 % con un consiglio se sei sotto o sopra. Senza il peso stima la bevanda come acqua − 2× caffè
+- **Andamento nel tempo**: sezione sotto il diario con voto nel tempo, EY nel tempo (con la fascia target 18–22 %) e voto medio per metodo, filtrabili per periodo (30 giorni, 90 giorni, 12 mesi, tutto) e per metodo, più tre riquadri di sintesi con la variazione rispetto al periodo precedente. Ogni grafico ha un tooltip (anche da tastiera) e una vista a tabella
 - **Unità di misura**: di default grammi, ml e °C. Il pulsante in alto apre le impostazioni: peso (g / oz), volume (ml / fl oz) e temperatura (°C / °F) si cambiano una per una, oppure con i preset "Tutto metrico" / "Tutto imperiale". Campi, procedure, timer, diario e immagine condivisa si convertono; ricette, diario salvato e link condivisi restano in grammi e °C. La scelta viene ricordata
 - **Funziona offline** e salva le tue impostazioni sul dispositivo
 - **Italiano e inglese**: alla prima visita la lingua segue il browser (italiano o inglese, altrimenti inglese); il pulsante IT/EN in alto la cambia e la scelta viene ricordata
@@ -49,6 +50,7 @@ js/notify.js        notifiche  ·  js/share.js  link e immagine
 js/diary.js         diario, confronto, import/export
 js/diary-store.js   archivio del diario (IndexedDB con copia in memoria, fallback localStorage)
 js/extraction.js    TDS ed EY (resa di estrazione)
+js/insights.js      andamento nel tempo del diario (calcoli e grafici SVG)
 js/units.js         unità metriche/imperiali (conversione dei testi e dei campi)
 js/sw-register.js   registrazione del service worker
 ```

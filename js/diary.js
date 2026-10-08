@@ -6,6 +6,7 @@ import { $, getVals, renderFreshness, save, state } from './app.js';
 import { render } from './render.js';
 import { timer } from './timer.js';
 import { showToast } from './share.js';
+import { renderInsights } from './insights.js';
 import { gToOz, isOz, massShort, ozToG } from './units.js';
 import { diaryBackend, getDiary, onDiaryStoreError, openDiaryStore, setDiary } from './diary-store.js';
 import { EY_TARGET, TDS_RANGE, entryExtraction, estimateOut, extractionYield, eyVerdict } from './extraction.js';
@@ -160,6 +161,7 @@ export function renderDiary() {
       n.addEventListener('click', () => n.classList.toggle('clamp')));
   }
   renderRepeatBanner();
+  renderInsights();
 }
 
 // ===== Confronto ricette =====
