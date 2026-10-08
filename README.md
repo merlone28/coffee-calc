@@ -28,7 +28,7 @@ L'app si apre a schermo intero con la propria icona, anche senza connessione.
 
 ## Tecnologia
 
-Un singolo file HTML senza dipendenze esterne (font Inter e JetBrains Mono inclusi in `fonts/`, licenza OFL), stile visivo "Premium" con tema chiaro e scuro, con manifest e service worker per l'installazione e l'uso offline. Nessun dato lascia il dispositivo: le impostazioni sono salvate in `localStorage`.
+Un singolo file HTML senza dipendenze esterne (font Chakra Petch e JetBrains Mono inclusi in `fonts/`, licenza OFL), stile visivo "Impeccable" con tema chiaro e scuro, con manifest e service worker per l'installazione e l'uso offline. Nessun dato lascia il dispositivo: le impostazioni sono salvate in `localStorage`.
 
 ## Licenza
 
