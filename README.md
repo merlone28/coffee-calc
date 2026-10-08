@@ -28,7 +28,34 @@ L'app si apre a schermo intero con la propria icona, anche senza connessione.
 
 ## Tecnologia
 
-Un singolo file HTML senza dipendenze esterne (font Chakra Petch e JetBrains Mono inclusi in `fonts/`, licenza OFL), stile visivo "Impeccable" con tema chiaro e scuro, con manifest e service worker per l'installazione e l'uso offline. Nessun dato lascia il dispositivo: le impostazioni sono salvate in `localStorage`.
+Web app statica senza build step e senza dipendenze esterne (font Chakra Petch e JetBrains Mono inclusi in `fonts/`, licenza OFL), stile visivo "Impeccable" con tema chiaro e scuro, con manifest e service worker per l'installazione e l'uso offline. Nessun dato lascia il dispositivo: le impostazioni sono salvate in `localStorage`.
+
+```
+index.html          struttura della pagina
+css/style.css       stili
+js/core.js          formattazione, icone SVG
+js/data/            metodi (IT/EN) e ricette celebri
+js/i18n.js          stringhe IT/EN e helper di traduzione
+js/app.js           stato, tab, tostatura/freschezza
+js/grinder.js       profili macinino e guida alla macinatura
+js/render.js        render principale, banner, tema
+js/timer.js         timer guidato / manuale / cold brew
+js/notify.js        notifiche  ·  js/share.js  link e immagine
+js/diary.js         diario, confronto, import/export
+js/main.js          avvio  ·  js/sw-register.js  service worker
+```
+
+Gli script sono file classici caricati in ordine da `index.html` e condividono lo scope globale (niente import/export): l'ordine dei tag `<script>` conta.
+
+## Sviluppo
+
+```bash
+npm start                 # server locale su http://localhost:8000
+npm install && npx playwright install chromium
+npm test                  # test di calcoli, macinini, import diario e accessibilità
+```
+
+Quando modifichi `index.html` o gli asset, incrementa `CACHE` in `sw.js` (e aggiungi eventuali nuovi file a `ASSETS`): gli utenti vedranno il banner "Nuova versione disponibile".
 
 ## Licenza
 
