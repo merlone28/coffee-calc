@@ -194,6 +194,11 @@
     <button type="button" data-v="4">★</button>
     <button type="button" data-v="5">★</button>
   </div>
+  <div class="diary-ey-fields">
+    <label class="diary-ey-field"><span id="diaryTdsLabel">TDS (%)</span><input id="diaryTds" type="number" inputmode="decimal" step="0.01" min="0" max="30" placeholder="1,38"></label>
+    <label class="diary-ey-field"><span id="diaryOutLabel">Bevanda ottenuta (g)</span><input id="diaryOut" type="number" inputmode="decimal" step="1" min="0"></label>
+  </div>
+  <div class="diary-ey-preview hidden" id="diaryEyPreview" role="status"></div>
   <textarea id="diaryNote" class="diary-note" placeholder="Note di gusto (opzionale): troppo acido, amaro, equilibrato..."></textarea>
   <div class="timer-controls">
     <button class="timer-main-btn timer-start-btn" id="diarySaveBtn">Salva</button>
