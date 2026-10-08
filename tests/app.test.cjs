@@ -8,7 +8,7 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 const ROOT = path.join(__dirname, '..');
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.woff2': 'font/woff2' };
+const TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.woff2': 'font/woff2' };
 let server, browser, page, base;
 
 before(async () => {
@@ -145,4 +145,16 @@ test('accessibilità: pulsanti solo-icona con nome, tab con ruolo, input con eti
   assert.ok(res.doseLabelled);
   assert.strictEqual(res.closeLabel, 'Chiudi');
   assert.deepStrictEqual(page.errors, []);
+});
+
+test('asset caricati: font e CSS risolti (nessuna richiesta fallita)', async () => {
+  const failed = [];
+  const p2 = await browser.newPage();
+  p2.on('response', r => { if (r.status() >= 400) failed.push(r.url()); });
+  await p2.goto(base);
+  await p2.evaluate(() => document.fonts.ready);
+  const loaded = await p2.evaluate(() => [...document.fonts].filter(f => f.status === 'loaded').length);
+  await p2.close();
+  assert.deepStrictEqual(failed, []);
+  assert.ok(loaded >= 1);
 });

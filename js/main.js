@@ -1,0 +1,3 @@
+renderDiary();
+render();
+applyLang();
