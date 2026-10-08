@@ -33,13 +33,35 @@ before(async () => {
   });
   page.errors = [];
   page.on('pageerror', e => page.errors.push(e.message));
-  await page.goto(base);
+  await go(page);
 });
 
 after(async () => {
   await browser?.close();
   server?.close();
 });
+
+// L'app parte in modo asincrono (il diario si carica da IndexedDB): si attende `data-ready` su <html>
+async function go(pg) { await pg.goto(base); await pg.waitForSelector('html[data-ready]', { state: 'attached' }); }
+async function reload(pg) { await pg.reload(); await pg.waitForSelector('html[data-ready]', { state: 'attached' }); }
+// Contenuto reale di IndexedDB (dopo aver atteso le scritture in corso), dalla voce più recente
+async function readDiaryDB(pg) {
+  return pg.evaluate(async () => {
+    await (await import('/js/diary-store.js')).flushDiary();
+    const db = await new Promise((res, rej) => { const r = indexedDB.open('coffee-calc', 1); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const all = await new Promise((res, rej) => { const r = db.transaction('diary').objectStore('diary').getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    db.close();
+    return all.sort((a, b) => new Date(b.date) - new Date(a.date));
+  });
+}
+// Diario "vecchio" in localStorage (come lo salvava la versione precedente), inserito una sola volta per pagina
+// Attende le scritture in corso nell'archivio (un ricaricamento nello stesso millisecondo del salvataggio le annullerebbe)
+const settle = pg => pg.evaluate(async () => (await import('/js/diary-store.js')).flushDiary());
+const seedLegacy = (pg, entries) => pg.addInitScript(d => {
+  if (!localStorage.getItem('__seeded')) { localStorage.setItem('coffee-brew-diary-v1', JSON.stringify(d)); localStorage.setItem('__seeded', '1'); }
+}, entries);
+const mkEntries = (n, startId = 1) => Array.from({ length: n }, (_, i) => ({ id: startId + i, date: new Date(2026, 0, 1, 0, i).toISOString(),
+  method: 'v60', methodName: 'Hario V60', dose: 20, water: 300, ratio: 15, rating: 3, note: '' }));
 
 // Apre la finestra delle unità, applica le scelte (es. { weight: 'oz', temp: 'f' } o 'imperial'/'metric') e la chiude.
 async function setUnits(pg, choice) {
@@ -132,8 +154,8 @@ test('sanitizeEntry: scarta voci invalide e limita i range', async () => {
 test('import del diario: HTML iniettato non viene eseguito né inserito', async () => {
   const payload = { diary: [{ methodName: '<img src=x onerror="window.__xss=1">', dose: 18, water: 270, ratio: 15,
     rating: 3, id: '1" onmouseover="window.__xss=1', temp: '<img src=x onerror="window.__xss=1">' }] };
-  await page.evaluate(() => localStorage.removeItem('coffee-brew-diary-v1'));
-  await page.reload();
+  await page.evaluate(async () => { const m = await import('/js/diary-store.js'); m.setDiary([]); await m.flushDiary(); });
+  await reload(page);
   await page.setInputFiles('#diaryImportFile', { name: 'b.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(payload)) });
   await page.waitForTimeout(300);
   const res = await page.evaluate(() => ({ xss: window.__xss, imgs: document.querySelectorAll('#diaryList img').length,
@@ -144,7 +166,7 @@ test('import del diario: HTML iniettato non viene eseguito né inserito', async 
 });
 
 test('accessibilità: pulsanti solo-icona con nome, tab con ruolo, input con etichetta', async () => {
-  await page.reload();
+  await reload(page);
   const res = await page.evaluate(() => {
     const unnamed = [...document.querySelectorAll('button')].filter(b =>
       b.offsetParent !== null && !b.textContent.trim() && !b.getAttribute('aria-label') && !b.title).map(b => b.id || b.className);
@@ -168,7 +190,7 @@ test('asset caricati: font e CSS risolti (nessuna richiesta fallita)', async () 
   const failed = [];
   const p2 = await browser.newPage();
   p2.on('response', r => { if (r.status() >= 400) failed.push(r.url()); });
-  await p2.goto(base);
+  await go(p2);
   await p2.evaluate(() => document.fonts.ready);
   const loaded = await p2.evaluate(() => [...document.fonts].filter(f => f.status === 'loaded').length);
   await p2.close();
@@ -181,7 +203,7 @@ test('lingua iniziale: segue il browser alla prima visita, rispetta la scelta sa
     const ctx = await browser.newContext({ locale });
     const pg = await ctx.newPage();
     if (preset) await pg.addInitScript(p => localStorage.setItem('coffee-brew-calc-v1', JSON.stringify(p)), preset);
-    await pg.goto(base);
+    await go(pg);
     const r = await pg.evaluate(() => ({ btn: document.getElementById('langBtn').textContent, html: document.documentElement.lang,
       saved: JSON.parse(localStorage.getItem('coffee-brew-calc-v1') || 'null') }));
     await ctx.close();
@@ -203,74 +225,114 @@ test('detectLang: prima lingua supportata, altrimenti inglese', async () => {
   assert.deepStrictEqual(r, ['it', 'it', 'en', 'en', 'en', 'en']);
 });
 
-test('diario: avviso vicino al limite di 100 voci e quando una voce viene scartata', async () => {
-  const mk = n => Array.from({ length: n }, (_, i) => ({ id: i + 1, date: new Date(2026, 0, 1, 0, i).toISOString(),
-    method: 'v60', methodName: 'Hario V60', dose: 20, water: 300, ratio: 15, rating: 3, note: '' })).reverse();
-  const open = async n => {
-    const pg = await browser.newPage({ locale: 'it-IT' });
-    await pg.addInitScript(d => localStorage.setItem('coffee-brew-diary-v1', JSON.stringify(d)), mk(n));
-    await pg.goto(base);
-    return pg;
-  };
-  const note = pg => pg.evaluate(() => ({ hidden: document.getElementById('diaryLimitNote').classList.contains('hidden'),
-    text: document.getElementById('diaryLimitText').textContent }));
+test('diario IndexedDB: migrazione dal vecchio localStorage, senza duplicati né voci non valide', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  const errs = []; pg.on('pageerror', e => errs.push(e.message));
+  await seedLegacy(pg, [...mkEntries(3), { id: 99, methodName: '', dose: 1 }, { dose: 18 }]);
+  await go(pg);
+  const stored = await readDiaryDB(pg);
+  assert.deepStrictEqual(stored.map(e => e.id).sort(), [1, 2, 3]);
+  assert.strictEqual(await pg.evaluate(() => localStorage.getItem('coffee-brew-diary-v1')), null, 'la vecchia copia viene eliminata');
+  assert.strictEqual(await pg.locator('#diaryList .diary-item').count(), 3);
+  assert.ok(await pg.evaluate(() => document.getElementById('diaryStorageNote').classList.contains('hidden')));
 
-  let pg = await open(89);
-  assert.strictEqual((await note(pg)).hidden, true);
+  // una copia vecchia rimasta (es. migrazione interrotta) non duplica le voci già migrate
+  await pg.evaluate(d => localStorage.setItem('coffee-brew-diary-v1', JSON.stringify(d)), mkEntries(4));
+  await reload(pg);
+  assert.deepStrictEqual((await readDiaryDB(pg)).map(e => e.id).sort(), [1, 2, 3, 4]);
+  assert.strictEqual(await pg.evaluate(() => localStorage.getItem('coffee-brew-diary-v1')), null);
+  assert.deepStrictEqual(errs, []);
   await pg.close();
-
-  pg = await open(92);
-  let n = await note(pg);
-  assert.strictEqual(n.hidden, false);
-  assert.match(n.text, /92/);
-  assert.match(n.text, /100/);
-  await pg.close();
-
-  // diario pieno: salvare una nuova voce scarta la più vecchia e lo dice
-  pg = await open(100);
-  n = await note(pg);
-  assert.match(n.text, /pieno/i);
-  await pg.click('#diaryAddBtn');
-  await pg.click('#diarySaveBtn');
-  const toast = await pg.textContent('#toast');
-  assert.match(toast, /eliminata/);
-  const stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1')));
-  assert.strictEqual(stored.length, 100);
-  assert.ok(!stored.some(e => e.id === 1), 'la voce più vecchia (id 1) deve essere stata scartata');
-  await pg.close();
-
-  // sotto il limite: nessun avviso di scarto
-  pg = await open(50);
-  await pg.click('#diaryAddBtn');
-  await pg.click('#diarySaveBtn');
-  assert.doesNotMatch(await pg.textContent('#toast'), /eliminata/);
-  await pg.close();
-
-  // inglese
-  const ctx = await browser.newContext({ locale: 'en-US' });
-  pg = await ctx.newPage();
-  await pg.addInitScript(d => localStorage.setItem('coffee-brew-diary-v1', JSON.stringify(d)), mk(95));
-  await pg.goto(base);
-  assert.match((await note(pg)).text, /keeps the latest 100/);
-  await ctx.close();
 });
 
-test('diario: l\'import oltre il limite avvisa quante voci non sono state conservate', async () => {
-  const entry = i => ({ id: 1000 + i, date: new Date(2026, 5, 1, 0, i).toISOString(), methodName: 'Hario V60', dose: 20, water: 300, ratio: 15 });
-  const existing = Array.from({ length: 95 }, (_, i) => ({ ...entry(i), id: i + 1, date: new Date(2026, 0, 1, 0, i).toISOString() }));
+test('diario IndexedDB: nessun limite di 100 voci, elenco a pagine', async () => {
   const pg = await browser.newPage({ locale: 'it-IT' });
-  await pg.addInitScript(d => localStorage.setItem('coffee-brew-diary-v1', JSON.stringify(d)), existing);
-  await pg.goto(base);
-  const incoming = { diary: Array.from({ length: 10 }, (_, i) => entry(i)) };
+  await seedLegacy(pg, mkEntries(150));
+  await go(pg);
+  assert.strictEqual((await readDiaryDB(pg)).length, 150);
+  assert.strictEqual(await pg.locator('#diaryList .diary-item').count(), 50);
+  assert.strictEqual(await pg.textContent('.dstat-val'), '150');
+  assert.match(await pg.textContent('#diaryMore'), /Mostra altre 50/);
+  await pg.click('#diaryMore');
+  assert.strictEqual(await pg.locator('#diaryList .diary-item').count(), 100);
+  await pg.click('#diaryMore');
+  assert.strictEqual(await pg.locator('#diaryList .diary-item').count(), 150);
+  assert.ok(await pg.evaluate(() => document.getElementById('diaryMore').classList.contains('hidden')));
+
+  // salvare una nuova infusione non scarta più nulla
+  await pg.click('#diaryAddBtn');
+  await pg.click('#diarySaveBtn');
+  const after = await readDiaryDB(pg);
+  assert.strictEqual(after.length, 151);
+  assert.ok(after.some(e => e.id === 1), 'la voce più vecchia è ancora lì');
+  await pg.close();
+});
+
+test('diario IndexedDB: aggiunte, modifiche ed eliminazioni restano dopo il ricaricamento', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  await go(pg);
+  await pg.click('#diaryAddBtn');
+  await pg.fill('#diaryNote', 'prima');
+  await pg.click('#diarySaveBtn');
+  await pg.click('#diaryAddBtn');
+  await pg.fill('#diaryNote', 'seconda');
+  await pg.click('#diarySaveBtn');
+  assert.strictEqual((await readDiaryDB(pg)).length, 2);
+
+  await settle(pg);
+  await reload(pg);
+  assert.strictEqual(await pg.locator('#diaryList .diary-item').count(), 2);
+
+  // modifica della prima voce in elenco (la più recente)
+  await pg.locator('#diaryList .diary-edit').first().click();
+  await pg.fill('#diaryNote', 'seconda, modificata');
+  await pg.click('#diarySaveBtn');
+  await settle(pg);
+  await reload(pg);
+  assert.match(await pg.textContent('#diaryList .diary-item-note'), /seconda, modificata/);
+
+  // eliminazione (doppio tocco di conferma)
+  await pg.locator('#diaryList .diary-del').first().click();
+  await pg.locator('#diaryList .diary-del.confirm').first().click();
+  await settle(pg);
+  await reload(pg);
+  assert.strictEqual(await pg.locator('#diaryList .diary-item').count(), 1);
+  const left = await readDiaryDB(pg);
+  assert.strictEqual(left.length, 1);
+  assert.strictEqual(left[0].note, 'prima');
+  await pg.close();
+});
+
+test('diario IndexedDB: senza IndexedDB ricade su localStorage e avvisa che è più fragile', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  await pg.addInitScript(() => Object.defineProperty(window, 'indexedDB', { value: undefined, configurable: true }));
+  const errs = []; pg.on('pageerror', e => errs.push(e.message));
+  await go(pg);
+  assert.ok(await pg.evaluate(() => !document.getElementById('diaryStorageNote').classList.contains('hidden')));
+  assert.match(await pg.textContent('#diaryStorageText'), /backup/);
+  await pg.click('#diaryAddBtn');
+  await pg.fill('#diaryNote', 'senza idb');
+  await pg.click('#diarySaveBtn');
+  await pg.evaluate(async () => (await import('/js/diary-store.js')).flushDiary());
+  const ls = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1')));
+  assert.strictEqual(ls.length, 1);
+  await reload(pg);
+  assert.match(await pg.textContent('#diaryList .diary-item-note'), /senza idb/);
+  assert.deepStrictEqual(errs, []);
+  await pg.close();
+});
+
+test('diario IndexedDB: l\'import non ha più il limite di 100 voci', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  await seedLegacy(pg, mkEntries(95));
+  await go(pg);
+  const incoming = { diary: mkEntries(10, 1000).map(e => ({ ...e, date: new Date(2026, 5, 1, 0, e.id - 1000).toISOString() })) };
   await pg.setInputFiles('#diaryImportFile', { name: 'b.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(incoming)) });
   await pg.waitForFunction(() => /importat/.test(document.getElementById('toast').textContent));
-  const toast = await pg.textContent('#toast');
-  assert.match(toast, /5 più vecchi oltre il limite di 100/);
-  const stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1')));
-  assert.strictEqual(stored.length, 100);
+  assert.doesNotMatch(await pg.textContent('#toast'), /oltre il limite/);
+  assert.strictEqual((await readDiaryDB(pg)).length, 105);
   await pg.close();
 });
-
 test('unità: convertText converte pesi, volumi e temperature, è idempotente e non tocca i rapporti', async () => {
   const r = await page.evaluate(async () => {
     const { convertText, state } = await window.__mods();
@@ -314,7 +376,7 @@ test('unità: convertText converte pesi, volumi e temperature, è idempotente e 
 test('unità imperiali: nessuna quantità metrica resta visibile, e tornando a metriche il testo è identico', async () => {
   const pg = await browser.newPage({ locale: 'it-IT' });
   const errs = []; pg.on('pageerror', e => errs.push(e.message));
-  await pg.goto(base);
+  await go(pg);
   const body = () => pg.evaluate(() => document.body.innerText);
   const leftovers = txt => (txt.match(/[^\n]*(\d\s?g\b(?![\/\w])|\d\s?ml\b|°\s?C|\(g\)|\(g \/ ml\))[^\n]*/g) || []).map(l => l.trim());
   const methods = await pg.evaluate(() => [...document.querySelectorAll('#tabs .tab')].map(b => b.dataset.m));
@@ -341,7 +403,7 @@ test('unità imperiali: nessuna quantità metrica resta visibile, e tornando a m
   assert.match(imperial['v60/0'], /201 °F/);
 
   // le unità si ricordano dopo il ricaricamento
-  await pg.reload();
+  await reload(pg);
   assert.ok(await pg.evaluate(() => document.getElementById('unitsBtn').classList.contains('on')));
   assert.match(await pg.inputValue('#doseInput'), /^\d+\.\d+$/);
 
@@ -358,7 +420,7 @@ test('unità imperiali: nessuna quantità metrica resta visibile, e tornando a m
 
 test('unità imperiali: i campi accettano once, i dati restano in grammi, le note non vengono convertite', async () => {
   const pg = await browser.newPage({ locale: 'it-IT' });
-  await pg.goto(base);
+  await go(pg);
   await setUnits(pg, 'imperial');
   await pg.fill('#doseInput', '1');
   await pg.dispatchEvent('#doseInput', 'input');
@@ -375,7 +437,7 @@ test('unità imperiali: i campi accettano once, i dati restano in grammi, le not
   assert.match(item, /oz/);
   assert.doesNotMatch(item, /\d g\b/);
   assert.match(await pg.textContent('#diaryList .diary-item-note'), /macinato 20 g a 93 °C/);
-  const entry = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1'))[0]);
+  const entry = (await readDiaryDB(pg))[0];
   assert.ok(Math.abs(entry.dose - 28.3495) < 0.01);
   assert.ok(entry.water > 400 && entry.water < 440);
   await pg.close();
@@ -383,7 +445,7 @@ test('unità imperiali: i campi accettano once, i dati restano in grammi, le not
 
 test('unità imperiali: timer guidato e cold brew mostrano once', async () => {
   const pg = await browser.newPage({ locale: 'it-IT' });
-  await pg.goto(base);
+  await go(pg);
   await setUnits(pg, 'imperial');
   for (const m of ['v60', 'coldbrew']) {
     await pg.click(`#tabs .tab[data-m="${m}"]`);
@@ -399,7 +461,7 @@ test('unità imperiali: timer guidato e cold brew mostrano once', async () => {
 
 test('unità: di default grammi e °C; le impostazioni si cambiano una per una', async () => {
   const pg = await browser.newPage({ locale: 'it-IT' });
-  await pg.goto(base);
+  await go(pg);
   // default: tutto metrico, nessun salvataggio necessario
   assert.strictEqual(await pg.inputValue('#doseInput'), '20');
   assert.match(await pg.textContent('#resultBanner'), /20 g/);
@@ -430,7 +492,7 @@ test('unità: di default grammi e °C; le impostazioni si cambiano una per una',
   // stato salvato malformato (es. valore vecchio): si torna ai default senza errori
   await pg.evaluate(() => { const s = JSON.parse(localStorage.getItem('coffee-brew-calc-v1')); s.units = 'imperial'; localStorage.setItem('coffee-brew-calc-v1', JSON.stringify(s)); });
   const errs = []; pg.on('pageerror', e => errs.push(e.message));
-  await pg.reload();
+  await reload(pg);
   assert.strictEqual(await pg.inputValue('#doseInput'), '20');
   assert.match(await pg.textContent('#tempVal'), /°C/);
   assert.deepStrictEqual(errs, []);
@@ -469,14 +531,14 @@ test('TDS/EY: formule, stima della bevanda e giudizio', async () => {
 test('TDS/EY: modulo del diario, elenco, modifica e confronto', async () => {
   const pg = await browser.newPage({ locale: 'it-IT' });
   const errs = []; pg.on('pageerror', e => errs.push(e.message));
-  await pg.goto(base);
+  await go(pg);
   const preview = () => pg.evaluate(() => { const b = document.getElementById('diaryEyPreview'); return b.classList.contains('hidden') ? '' : b.textContent; });
 
   // senza TDS: nessuna anteprima, la voce si salva come prima
   await pg.click('#diaryAddBtn');
   assert.strictEqual(await preview(), '');
   await pg.click('#diarySaveBtn');
-  let stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1')));
+  let stored = await readDiaryDB(pg);
   assert.strictEqual(stored[0].tds, undefined);
   assert.strictEqual(await pg.locator('.diary-item-ey').count(), 0);
 
@@ -486,7 +548,7 @@ test('TDS/EY: modulo del diario, elenco, modifica e confronto', async () => {
   await pg.fill('#diaryOut', '285');
   assert.match(await preview(), /EY 19,7 % · nel target \(target SCA 18–22 %\)/);
   await pg.click('#diarySaveBtn');
-  stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1')));
+  stored = await readDiaryDB(pg);
   assert.deepStrictEqual([stored[0].tds, stored[0].out], [1.38, 285]);
   assert.match(await pg.textContent('#diaryList .diary-item-ey'), /TDS 1,38 % · EY 19,7 % · nel target/);
 
@@ -507,7 +569,7 @@ test('TDS/EY: modulo del diario, elenco, modifica e confronto', async () => {
   await pg.fill('#diaryOut', '280');
   assert.match(await preview(), /EY 22,4 % · sovra-estratto/);
   await pg.click('#diarySaveBtn');
-  stored = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1')));
+  stored = await readDiaryDB(pg);
   assert.ok(stored.some(e => e.tds === 1.6 && e.out === 280));
 
   // confronto: mostra TDS ed EY
@@ -524,7 +586,7 @@ test('TDS/EY: modulo del diario, elenco, modifica e confronto', async () => {
 
 test('TDS/EY: con le once il campo bevanda è in once ma si salva in grammi', async () => {
   const pg = await browser.newPage({ locale: 'it-IT' });
-  await pg.goto(base);
+  await go(pg);
   await setUnits(pg, { weight: 'oz' });
   await pg.click('#diaryAddBtn');
   assert.match(await pg.textContent('#diaryOutLabel'), /\(oz\)/);
@@ -532,7 +594,7 @@ test('TDS/EY: con le once il campo bevanda è in once ma si salva in grammi', as
   await pg.fill('#diaryOut', '10');          // 10 oz = 283,5 g
   assert.match(await pg.textContent('#diaryEyPreview'), /EY 19,6 %/);
   await pg.click('#diarySaveBtn');
-  const e = await pg.evaluate(() => JSON.parse(localStorage.getItem('coffee-brew-diary-v1'))[0]);
+  const e = (await readDiaryDB(pg))[0];
   assert.ok(Math.abs(e.out - 283.495) < 0.01);
   await pg.close();
 });

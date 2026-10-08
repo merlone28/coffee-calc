@@ -15,7 +15,7 @@ Web app (PWA) per calcolare dosi, acqua e rapporti di estrazione per sei metodi 
 - **Profili macinino 1Zpresso** (X-Ultra, X-Pro S, J-Ultra, J-Max S, JX-Pro S, K-Ultra, K-Max, Q2/J): click di partenza e range per ogni metodo in formato giri.numero.click (fasce verificate per X-Ultra), possibilità di salvare il proprio setting per metodo
 - **Guida alla macinatura**: come leggere i numeri, taratura dello zero, tabella "nel bicchiere → cosa fare" con i click calcolati sul passo del tuo macinino, consigli per tostatura e freschezza
 - **Linee guida sull'acqua** secondo gli standard SCA: TDS, durezza, alcalinità, pH
-- **Diario delle infusioni** con voti, note, confronto, statistiche e backup JSON (esporta/importa). Conserva le ultime 100 voci: da 90 in su compare un avviso con il pulsante di esportazione, e quando una voce viene scartata (nuova infusione o import) l'app lo dice
+- **Diario delle infusioni** con voti, note, confronto, statistiche e backup JSON (esporta/importa). Salvato in IndexedDB, senza limite di voci (l'elenco mostra 50 voci alla volta); il vecchio diario in `localStorage` viene migrato automaticamente alla prima apertura. Se il browser non offre IndexedDB si ricade su `localStorage` e l'app avvisa di esportare un backup spesso
 - **TDS ed EY**: nel diario puoi annotare il TDS misurato col rifrattometro e il peso della bevanda; l'app calcola la resa di estrazione (EY = TDS × bevanda / caffè) e la confronta con l'intervallo SCA 18–22 % con un consiglio se sei sotto o sopra. Senza il peso stima la bevanda come acqua − 2× caffè
 - **Unità di misura**: di default grammi, ml e °C. Il pulsante in alto apre le impostazioni: peso (g / oz), volume (ml / fl oz) e temperatura (°C / °F) si cambiano una per una, oppure con i preset "Tutto metrico" / "Tutto imperiale". Campi, procedure, timer, diario e immagine condivisa si convertono; ricette, diario salvato e link condivisi restano in grammi e °C. La scelta viene ricordata
 - **Funziona offline** e salva le tue impostazioni sul dispositivo
@@ -32,7 +32,7 @@ L'app si apre a schermo intero con la propria icona, anche senza connessione.
 
 ## Tecnologia
 
-Web app statica senza build step e senza dipendenze esterne (font Chakra Petch e JetBrains Mono inclusi in `fonts/`, licenza OFL), stile visivo "Impeccable" con tema chiaro e scuro, con manifest e service worker per l'installazione e l'uso offline. Nessun dato lascia il dispositivo: le impostazioni sono salvate in `localStorage`.
+Web app statica senza build step e senza dipendenze esterne (font Chakra Petch e JetBrains Mono inclusi in `fonts/`, licenza OFL), stile visivo "Impeccable" con tema chiaro e scuro, con manifest e service worker per l'installazione e l'uso offline. Nessun dato lascia il dispositivo: le impostazioni sono salvate in `localStorage`, il diario in IndexedDB.
 
 ```
 index.html          struttura della pagina (carica solo js/main.js)
@@ -47,6 +47,7 @@ js/render.js        render principale, banner, tema
 js/timer.js         timer guidato / manuale / cold brew
 js/notify.js        notifiche  ·  js/share.js  link e immagine
 js/diary.js         diario, confronto, import/export
+js/diary-store.js   archivio del diario (IndexedDB con copia in memoria, fallback localStorage)
 js/extraction.js    TDS ed EY (resa di estrazione)
 js/units.js         unità metriche/imperiali (conversione dei testi e dei campi)
 js/sw-register.js   registrazione del service worker
