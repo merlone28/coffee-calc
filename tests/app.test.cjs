@@ -31,7 +31,7 @@ before(async () => {
   await page.addInitScript(() => {
     window.__mods = async () => Object.assign({},
       await import('/js/core.js'), await import('/js/data/methods.js'), await import('/js/i18n.js'),
-      await import('/js/app.js'), await import('/js/grinder.js'), await import('/js/diary.js'), await import('/js/units.js'), await import('/js/extraction.js'));
+      await import('/js/app.js'), await import('/js/grinder.js'), await import('/js/diary.js'), await import('/js/units.js'), await import('/js/extraction.js'), await import('/js/insights.js'));
   });
   page.errors = [];
   page.on('pageerror', e => page.errors.push(e.message));
@@ -661,4 +661,162 @@ test('aggiornamento: il tocco funziona anche nella prima sessione, senza ricaric
   assert.strictEqual(await pg.evaluate(() => window.__marker), undefined, 'la pagina deve ricaricarsi dopo il tocco');
   swSuffix = '';
   await ctx.close();
+});
+
+// ----- Andamento nel tempo -----
+const DAY_MS = 86400000;
+// Voci di prova relative a "adesso": giorni fa, metodo, voto, TDS opzionale
+const mkInsight = specs => specs.map(([daysAgo, method, rating, tds], i) => ({
+  id: i + 1, date: new Date(Date.now() - daysAgo * DAY_MS).toISOString(), method, methodName: { v60: 'Hario V60', moka: 'Moka', aeropress: 'AeroPress' }[method],
+  dose: 20, water: 300, ratio: 15, rating, note: '', ...(tds ? { tds, out: 280 } : {})
+}));
+
+test('andamento: calcoli di filtro, serie, metodi e sintesi', async () => {
+  const r = await page.evaluate(async (DAY) => {
+    const { filterEntries, ratingSeries, eySeries, methodStats, summary } = await window.__mods();
+    const now = Date.now();
+    const e = (d, method, rating, extra = {}) => ({ id: Math.random(), date: new Date(now - d * DAY).toISOString(), method, methodName: method, dose: 20, water: 300, ratio: 15, rating, ...extra });
+    const diary = [e(2, 'v60', 4, { tds: 1.4, out: 280 }), e(10, 'v60', 5), e(40, 'moka', 3), e(100, 'v60', 0), e(200, 'moka', 2, { tds: 1.0, out: 280 })];
+    const out = {};
+    out.r30 = filterEntries(diary, { range: '30' }, now).length;
+    out.r90 = filterEntries(diary, { range: '90' }, now).length;
+    out.all = filterEntries(diary, { range: 'all' }, now).length;
+    out.moka = filterEntries(diary, { method: 'moka' }, now).length;
+    out.perBrew = ratingSeries(diary);
+    // tante infusioni in poche settimane -> media settimanale; su molti mesi -> media mensile
+    const many = (n, spacing) => Array.from({ length: n }, (_, i) => e(i * spacing, 'v60', 1 + (i % 5)));
+    out.weekGrain = ratingSeries(many(40, 2)).grain;
+    out.monthGrain = ratingSeries(many(40, 10)).grain;
+    out.weekPoints = ratingSeries(many(40, 2)).points.every(p => p.n >= 1) && ratingSeries(many(40, 2)).points.reduce((s, p) => s + p.n, 0);
+    out.ey = eySeries(diary).map(p => [Math.round(p.y * 10) / 10, p.verdict]);
+    out.methods = methodStats(diary).map(m => [m.method, m.n, m.nRated, m.avg]);
+    out.sumAll = summary(diary, { range: 'all' }, now);
+    out.sum30 = summary(diary, { range: '30' }, now);
+    out.sum90 = summary(diary, { range: '90' }, now);
+    return out;
+  }, DAY_MS);
+  assert.deepStrictEqual([r.r30, r.r90, r.all, r.moka], [2, 3, 5, 2]);
+  assert.deepStrictEqual(r.perBrew.points.map(p => p.y), [2, 3, 5, 4], 'voti in ordine di data, senza i non votati');
+  assert.strictEqual(r.perBrew.grain, 'brew');
+  assert.strictEqual(r.weekGrain, 'week');
+  assert.strictEqual(r.monthGrain, 'month');
+  assert.strictEqual(r.weekPoints, 40, 'la media settimanale non perde infusioni');
+  assert.strictEqual(r.ey.length, 2);
+  assert.strictEqual(r.ey[0][1], 'under');          // la più vecchia: TDS 1.0 × 280 / 20 = 14 %
+  assert.strictEqual(r.ey[1][1], 'ok');             // la più recente: 19,6 %
+  assert.deepStrictEqual(r.methods.map(m => m[0]), ['v60', 'moka'], 'ordinati per voto medio');
+  assert.deepStrictEqual(r.methods[0].slice(1), [3, 2, 4.5]);
+  assert.deepStrictEqual(r.methods[1].slice(1), [2, 2, 2.5]);
+  assert.strictEqual(r.sumAll.prev, null, 'con "tutto" non c\'è un periodo precedente');
+  assert.deepStrictEqual([r.sum30.cur.n, r.sum30.prev.n], [2, 1]);       // 30 gg: 2; i 30 precedenti (30–60): la voce di 40 giorni fa
+  assert.deepStrictEqual([r.sum90.cur.n, r.sum90.prev.n], [3, 1]);
+  assert.strictEqual(r.sum30.cur.rating, 4.5);
+  assert.strictEqual(r.sum30.prev.rating, 3);
+});
+
+test('andamento: filtri, riquadri, grafici, tooltip, tastiera e tabella', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT', viewport: { width: 420, height: 900 } });
+  const errs = []; pg.on('pageerror', e => errs.push(e.message));
+  // 36 infusioni (media settimanale) su V60/Moka/AeroPress; TDS ogni 4ª: alcune nel target, altre no
+  const specs = Array.from({ length: 36 }, (_, i) => [3 * i + 1, ['v60', 'moka', 'aeropress'][i % 3], 1 + (i % 5), i % 4 === 0 ? [1.0, 1.4, 1.5, 1.2][(i / 4) % 4] : 0]);
+  await seedLegacy(pg, mkInsight(specs));
+  await go(pg);
+  assert.strictEqual(await pg.locator('#insightsBody').innerHTML(), '', 'chiuso: non disegna nulla');
+  await pg.click('#insightsCard summary');
+
+  const tile = n => pg.locator('.viz-tile-val').nth(n).textContent();
+  assert.strictEqual(await tile(0), '36');
+  assert.strictEqual(await pg.locator('.viz-fig').count(), 3);
+  assert.strictEqual(await pg.locator('#insightsBody svg.viz-svg').count(), 3);
+  assert.deepStrictEqual(errs, []);
+
+  // grafico dell'EY: punti pieni = nel target, vuoti = fuori; la fascia target c'è
+  const ey = await pg.evaluate(() => {
+    const fig = document.querySelectorAll('.viz-fig')[1];
+    return { filled: fig.querySelectorAll('.viz-dot:not(.hollow):not(.active)').length, hollow: fig.querySelectorAll('.viz-dot.hollow').length, band: fig.querySelectorAll('.viz-band').length };
+  });
+  assert.strictEqual(ey.filled + ey.hollow, 9);
+  assert.ok(ey.filled > 0 && ey.hollow > 0);
+  assert.strictEqual(ey.band, 1);
+
+  // tooltip al passaggio del puntatore
+  const svg = pg.locator('.viz-fig').nth(1).locator('svg.viz-svg');
+  await svg.scrollIntoViewIfNeeded();
+  const bb = await svg.boundingBox();
+  await pg.mouse.move(bb.x + bb.width * 0.6, bb.y + bb.height * 0.5);
+  const tip = pg.locator('.viz-fig').nth(1).locator('.viz-tip');
+  assert.ok(await tip.isVisible());
+  assert.match(await tip.textContent(), /%/);
+  await pg.mouse.move(bb.x - 40, bb.y - 40);
+  assert.ok(!(await tip.isVisible()), 'il tooltip sparisce quando il puntatore esce');
+
+  // tastiera: il grafico si mette a fuoco e le frecce spostano il punto
+  await svg.focus();
+  const t1 = await tip.textContent();
+  await pg.keyboard.press('ArrowLeft');
+  assert.notStrictEqual(await tip.textContent(), t1);
+  await pg.keyboard.press('Escape');
+  assert.ok(!(await tip.isVisible()));
+
+  // tabella gemella: stessi punti
+  await pg.locator('.viz-fig').nth(1).locator('.viz-toggle').click();
+  assert.strictEqual(await pg.locator('.viz-fig').nth(1).locator('tbody tr').count(), 9);
+  assert.ok(!(await pg.locator('.viz-fig').nth(1).locator('svg.viz-svg').isVisible()));
+  await pg.locator('.viz-fig').nth(1).locator('.viz-toggle').click();
+
+  // filtro per periodo: 30 giorni -> 10 infusioni (giorni fa 1, 4, ..., 28) e variazione sul periodo precedente
+  await pg.locator('.viz-chips button', { hasText: '30 giorni' }).click();
+  assert.strictEqual(await tile(0), '10');
+  assert.match(await pg.locator('.viz-tile-delta').first().textContent(), /vs 30 gg prima/);
+  await pg.locator('.viz-chips button', { hasText: 'Tutto' }).click();
+  assert.strictEqual(await tile(0), '36');
+
+  // filtro per metodo: un solo metodo -> riquadro al posto del grafico a barre
+  await pg.selectOption('.viz-select', 'moka');
+  assert.strictEqual(await tile(0), '12');
+  assert.strictEqual(await pg.locator('.viz-bar').count(), 0);
+  await pg.selectOption('.viz-select', '');
+  assert.strictEqual(await pg.locator('.viz-bar').count(), 3);
+
+  // un'infusione nuova aggiorna subito l'andamento (la sezione è aperta)
+  await pg.click('#diaryAddBtn');
+  await pg.click('#diarySaveBtn');
+  assert.strictEqual(await tile(0), '37');
+  assert.deepStrictEqual(errs, []);
+  await pg.close();
+});
+
+test('andamento: stati vuoti, colori del tema e nessuna conversione di unità sui numeri', async () => {
+  const pg = await browser.newPage({ locale: 'it-IT' });
+  await go(pg);
+  await pg.click('#insightsCard summary');
+  await pg.waitForSelector('#insightsBody .viz-empty');   // l'evento toggle di <details> è asincrono
+  assert.match(await pg.textContent('#insightsBody'), /almeno 2 infusioni/);
+
+  // senza TDS: grafico dei voti sì, EY vuoto con il suggerimento
+  await pg.evaluate(async (entries) => { const m = await import('/js/diary-store.js'); m.setDiary(entries); await m.flushDiary(); (await import('/js/diary.js')).renderDiary(); },
+    mkInsight([[2, 'v60', 4], [9, 'v60', 5], [20, 'moka', 3]]));
+  assert.strictEqual(await pg.locator('.viz-fig').count(), 3);
+  assert.match(await pg.locator('.viz-fig').nth(1).textContent(), /Annota il TDS in almeno 2 infusioni/);
+  assert.strictEqual(await pg.locator('.viz-fig').nth(0).locator('svg.viz-svg').count(), 1);
+
+  // periodo senza infusioni
+  await pg.evaluate(async (entries) => { const m = await import('/js/diary-store.js'); m.setDiary(entries); (await import('/js/diary.js')).renderDiary(); }, mkInsight([[300, 'v60', 4], [310, 'v60', 5]]));
+  await pg.locator('.viz-chips button', { hasText: '30 giorni' }).click();
+  assert.match(await pg.textContent('#insightsBody'), /Nessuna infusione in questo periodo/);
+
+  // il colore della serie segue il tema (valori validati: chiaro #ae4d1b, scuro #d4733c)
+  const color = () => pg.evaluate(() => getComputedStyle(document.getElementById('insightsBody')).getPropertyValue('--viz-1').trim());
+  await pg.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
+  assert.strictEqual(await color(), '#ae4d1b');
+  await pg.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
+  assert.strictEqual(await color(), '#d4733c');
+
+  // con le once non si altera nessun numero dei grafici (voti, EY, conteggi)
+  await pg.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
+  await pg.locator('.viz-chips button', { hasText: 'Tutto' }).click();
+  const before = await pg.textContent('#insightsBody');
+  await setUnits(pg, 'imperial');
+  assert.strictEqual(await pg.textContent('#insightsBody'), before);
+  await pg.close();
 });
