@@ -9,6 +9,7 @@ import { showToast } from './share.js';
 import { renderInsights } from './insights.js';
 import { gToOz, isOz, massShort, ozToG } from './units.js';
 import { diaryBackend, getDiary, onDiaryStoreError, openDiaryStore, setDiary } from './diary-store.js';
+import { backupFileName, buildBackup, mergeDiaries, parseBackup } from './diary-sync.js';
 import { EY_TARGET, TDS_RANGE, entryExtraction, estimateOut, extractionYield, eyVerdict } from './extraction.js';
 
 // ===== Diario infusioni =====
@@ -41,6 +42,7 @@ export function sanitizeEntry(raw) {
   const temp = num(raw.temp, 0, 100); if (temp != null && temp > 0) e.temp = temp;
   const tds = num(raw.tds, TDS_RANGE.min, TDS_RANGE.max); if (tds != null) e.tds = tds;
   const out = num(raw.out, 1, 50000); if (out != null) e.out = out;
+  const upd = num(raw.updated, 1, 4e12); if (upd != null) e.updated = Math.round(upd);   // ultima modifica (per l'unione tra dispositivi)
   if (raw.cbMode === 'conc' || raw.cbMode === 'rtd') e.cbMode = raw.cbMode;
   if (typeof raw.recipe === 'string') e.recipe = raw.recipe.replace(/[^\w-]/g, '').slice(0, 40);
   if (typeof raw.recipeTag === 'string') e.recipeTag = raw.recipeTag.slice(0, 40);
@@ -279,6 +281,45 @@ function openDiaryForm(prefill, isEdit) {
   $('diaryOverlay').classList.add('show');
 }
 
+// ----- Backup: esportazione, anteprima e unione -----
+const backupSettings = () => ({ roast: state.roast || 'medium', roastDate: state.roastDate || null });
+
+export function backupFile() {
+  const json = JSON.stringify(buildBackup(loadDiary(), backupSettings()), null, 2);
+  return new File([json], backupFileName(state.lang), { type: 'application/json' });
+}
+export function downloadBackup() {
+  const file = backupFile();
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url; a.download = file.name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+// Legge un backup e calcola cosa cambierebbe nel diario, senza toccare nulla (lancia se il file non è valido)
+export function previewBackup(text) {
+  const { incoming, settings } = parseBackup(text);
+  return { settings, ...mergeDiaries(loadDiary(), incoming, sanitizeEntry) };
+}
+// Applica un'anteprima: salva il diario unito e ripristina le impostazioni di tostatura; restituisce il messaggio per l'utente
+export function commitBackup(plan) {
+  saveDiary(plan.merged);
+  let settingsMsg = '';
+  const s = plan.settings;
+  if (s) {
+    if (s.roast && ROAST[s.roast]) state.roast = s.roast;
+    if ('roastDate' in s) {
+      state.roastDate = s.roastDate || null;
+      $('roastDateInput').value = state.roastDate || '';
+    }
+    save(); renderFreshness(); render();
+    settingsMsg = t('diarySettingsRestored');
+  }
+  renderDiary();
+  return t('diaryImported')(plan.added) + (plan.updated ? t('diaryImportUpdated')(plan.updated) : '') +
+    (plan.unchanged ? t('diaryImportSkipped')(plan.unchanged) : '') + settingsMsg;
+}
+
 export function initDiary() {
   $('diaryCompareBtn').addEventListener('click', () => {
     const diary = loadDiary();
@@ -293,22 +334,7 @@ export function initDiary() {
     document.body.style.overflow = '';
   });
   // ===== Export / import diario =====
-  $('diaryExportBtn').addEventListener('click', () => {
-    const diary = loadDiary();
-    const payload = {
-      app: 'coffee-brew-calc', version: 2, exportedAt: new Date().toISOString(),
-      settings: { roast: state.roast || 'medium', roastDate: state.roastDate || null },
-      diary
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${state.lang === 'en' ? 'coffee-diary' : 'diario-caffe'}-${dateStr}.json`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
-    showToast(t('diaryExported'));
-  });
+  $('diaryExportBtn').addEventListener('click', () => { downloadBackup(); showToast(t('diaryExported')); });
   $('diaryTds').addEventListener('input', renderEyPreview);
   $('diaryOut').addEventListener('input', renderEyPreview);
   $('diaryStorageExport').addEventListener('click', () => $('diaryExportBtn').click());
@@ -320,39 +346,7 @@ export function initDiary() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      try {
-        const data = JSON.parse(reader.result);
-        const incoming = Array.isArray(data) ? data : (Array.isArray(data.diary) ? data.diary : null);
-        if (!incoming) throw new Error('invalid');
-        const existing = loadDiary();
-        const existingIds = new Set(existing.map(x => String(x.id)));
-        let added = 0, skipped = 0;
-        incoming.forEach(raw => {
-          const entry = sanitizeEntry(raw);
-          if (!entry) return;
-          if (raw.id && existingIds.has(String(entry.id))) { skipped++; return; }
-          existing.push(entry);
-          existingIds.add(String(entry.id));
-          added++;
-        });
-        existing.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-        saveDiary(existing);
-        // Ripristina impostazioni tostatura se presenti nel backup (v2)
-        let settingsMsg = '';
-        if (data && data.settings && typeof data.settings === 'object') {
-          if (data.settings.roast && ROAST[data.settings.roast]) state.roast = data.settings.roast;
-          if ('roastDate' in data.settings) {
-            state.roastDate = data.settings.roastDate || null;
-            $('roastDateInput').value = state.roastDate || '';
-          }
-          save(); renderFreshness(); render();
-          settingsMsg = t('diarySettingsRestored');
-        }
-        renderDiary();
-        showToast(t('diaryImported')(added) + (skipped ? t('diaryImportSkipped')(skipped) : '') + settingsMsg);
-      } catch (err) {
-        showToast(t('diaryImportInvalid'));
-      }
+      try { showToast(commitBackup(previewBackup(reader.result))); } catch (err) { showToast(t('diaryImportInvalid')); }
       $('diaryImportFile').value = '';
     };
     reader.readAsText(file);
@@ -385,6 +379,7 @@ export function initDiary() {
       if (i >= 0) {
         diary[i].rating = pendingRating;
         diary[i].note = $('diaryNote').value.trim();
+      diary[i].updated = Date.now();
       const ex = readExtractionFields();
       if (ex.tds != null) diary[i].tds = ex.tds; else delete diary[i].tds;
       if (ex.out != null) diary[i].out = ex.out; else delete diary[i].out;
