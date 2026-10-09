@@ -1,4 +1,4 @@
-const CACHE = 'coffee-calc-v29';
+const CACHE = 'coffee-calc-v30';
 // File di backup ricevuto da "Condividi con...", custodito fino a quando la pagina lo legge
 const SHARE_CACHE = 'coffee-calc-share';
 const ASSETS = ['./', './index.html', './manifest.json', './favicon.png', './css/style.css', './js/core.js', './js/data/methods.js', './js/data/methods-en.js', './js/data/recipes.js', './js/i18n.js', './js/app.js', './js/grinder.js', './js/render.js', './js/timer.js', './js/units.js', './js/notify.js', './js/share.js', './js/diary.js', './js/diary-store.js', './js/insights.js', './js/diary-sync.js', './js/diary-share.js', './js/extraction.js', './js/main.js', './js/sw-register.js', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './fonts/chakra-petch-latin-400-normal.woff2', './fonts/chakra-petch-latin-500-normal.woff2', './fonts/chakra-petch-latin-600-normal.woff2', './fonts/chakra-petch-latin-700-normal.woff2', './fonts/jetbrains-mono-latin-wght-normal.woff2'];
